@@ -257,9 +257,12 @@
       }
 
       // El aviso por correo y el registro en el Sheet los hace este
-      // navegador, no el servidor (ver más abajo).
+      // navegador, no el servidor (ver más abajo). Se espera a que termine
+      // antes de repintar: si no, el repintado inmediato vería aviso_enviado
+      // todavía en false y mostraría "no se pudo avisar" aunque el envío
+      // esté en curso y acabe funcionando bien un instante después.
       if (datos.ok && datos.registro) {
-        procesarRegistro(datos.registro);
+        await procesarRegistro(datos.registro);
       }
     } catch {
       alert('Sin conexión. El cambio no se ha guardado.');
