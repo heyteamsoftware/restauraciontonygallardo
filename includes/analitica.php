@@ -12,30 +12,99 @@ require_once __DIR__ . '/arranque.php';
 
 const ANALITICA_ESTADOS_VENDIDOS = ['completado', 'archivado'];
 
-/** Fecha de inicio del rango pedido: '7', '30', '90' o 'todo'. */
-function analiticaFechaDesde(string $rango): ?string
+/**
+ * Año en que empieza el curso escolar actual (el curso "2026-2027" empieza
+ * el 1 de septiembre de 2026). De enero a agosto se sigue contando como
+ * parte del curso que empezó el septiembre anterior.
+ */
+function analiticaAnioInicioCursoActual(): int
 {
+    $anio = (int) date('Y');
+    $mes  = (int) date('n');
+    return $mes >= 9 ? $anio : $anio - 1;
+}
+
+/** Nombre corto del rango del curso que empieza en $anioInicio (p. ej. "curso_2026"). */
+function analiticaValorCurso(int $anioInicio): string
+{
+    return 'curso_' . $anioInicio;
+}
+
+/**
+ * Límites [desde, hasta) del rango pedido:
+ *   '7' | '30' | '90'   → últimos N días (hasta ahora, sin límite superior)
+ *   'todo'               → sin límites
+ *   'curso_AAAA'         → curso escolar que empieza el 1 de septiembre de AAAA
+ *
+ * @return array{0: ?string, 1: ?string}
+ */
+function analiticaLimitesFecha(string $rango): array
+{
+    if (preg_match('/^curso_(\d{4})$/', $rango, $coincidencia)) {
+        $anioInicio = (int) $coincidencia[1];
+        return [
+            sprintf('%04d-09-01 00:00:00', $anioInicio),
+            sprintf('%04d-09-01 00:00:00', $anioInicio + 1),
+        ];
+    }
+
     $dias = match ($rango) {
         '7'  => 7,
         '30' => 30,
         '90' => 90,
         default => null, // 'todo'
     };
-    return $dias === null ? null : date('Y-m-d 00:00:00', strtotime("-$dias days"));
+    if ($dias === null) {
+        return [null, null];
+    }
+    return [date('Y-m-d 00:00:00', strtotime("-$dias days")), null];
+}
+
+/**
+ * Cursos escolares con algún pedido registrado, más el curso actual aunque
+ * todavía no tenga ninguno. Se usan para pintar los botones de filtro.
+ */
+function analiticaCursosDisponibles(): array
+{
+    $anioActual = analiticaAnioInicioCursoActual();
+
+    $primerPedido = bd()->query('SELECT MIN(creado_en) FROM pedidos')->fetchColumn();
+    $anioMasAntiguo = $anioActual;
+    if ($primerPedido) {
+        $mes  = (int) date('n', strtotime($primerPedido));
+        $anio = (int) date('Y', strtotime($primerPedido));
+        $anioMasAntiguo = $mes >= 9 ? $anio : $anio - 1;
+    }
+
+    $cursos = [];
+    for ($anio = $anioActual; $anio >= $anioMasAntiguo; $anio--) {
+        $cursos[] = [
+            'valor'   => analiticaValorCurso($anio),
+            'etiqueta' => 'Curso ' . $anio . '-' . ($anio + 1),
+            'actual'  => $anio === $anioActual,
+        ];
+    }
+    return $cursos;
 }
 
 /** Reúne todas las métricas del rango pedido. */
 function analiticaObtenerMetricas(string $rango): array
 {
-    $pdo    = bd();
-    $desde  = analiticaFechaDesde($rango);
+    $pdo = bd();
+    [$desde, $hasta] = analiticaLimitesFecha($rango);
     $marcadoresEstado = implode(',', array_fill(0, count(ANALITICA_ESTADOS_VENDIDOS), '?'));
-    $condicionFecha   = $desde ? 'AND pe.creado_en >= ?' : '';
 
+    $condiciones = [];
     $parametrosBase = ANALITICA_ESTADOS_VENDIDOS;
     if ($desde) {
+        $condiciones[] = 'pe.creado_en >= ?';
         $parametrosBase[] = $desde;
     }
+    if ($hasta) {
+        $condiciones[] = 'pe.creado_en < ?';
+        $parametrosBase[] = $hasta;
+    }
+    $condicionFecha = $condiciones ? 'AND ' . implode(' AND ', $condiciones) : '';
 
     // ---------- Resumen general ----------
     $consulta = $pdo->prepare(

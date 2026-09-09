@@ -1,8 +1,8 @@
 <?php
 /**
- * GET api/analitica.php?rango=7|30|90|todo
- * Devuelve las métricas de ventas y las recomendaciones para el panel
- * de Analítica.
+ * GET api/analitica.php?rango=7|30|90|todo|curso_AAAA
+ * Devuelve las métricas de ventas, las recomendaciones y los cursos
+ * escolares disponibles para el panel de Analítica.
  */
 
 declare(strict_types=1);
@@ -13,9 +13,11 @@ require_once __DIR__ . '/../includes/recomendaciones.php';
 
 exigirAdmin(esApi: true);
 
-$rango = (string) ($_GET['rango'] ?? '30');
-if (!in_array($rango, ['7', '30', '90', 'todo'], true)) {
-    $rango = '30';
+$rangoInicial = analiticaValorCurso(analiticaAnioInicioCursoActual());
+$rango = (string) ($_GET['rango'] ?? $rangoInicial);
+$rangoValido = in_array($rango, ['7', '30', '90', 'todo'], true) || preg_match('/^curso_\d{4}$/', $rango);
+if (!$rangoValido) {
+    $rango = $rangoInicial;
 }
 
 $metricas = analiticaObtenerMetricas($rango);
@@ -25,4 +27,5 @@ json([
     'ok'              => true,
     'metricas'        => $metricas,
     'recomendaciones' => $recomendaciones,
+    'cursos'          => analiticaCursosDisponibles(),
 ]);

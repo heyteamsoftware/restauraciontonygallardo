@@ -7,8 +7,11 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/analitica.php';
 
 exigirAdmin();
+
+$rangoInicial = analiticaValorCurso(analiticaAnioInicioCursoActual());
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -38,11 +41,18 @@ exigirAdmin();
 <main class="panel panel--analitica">
 
   <div class="analitica__controles">
-    <div class="filtros-rango" id="filtrosRango" role="group" aria-label="Rango de fechas">
-      <button class="filtro-rango" data-rango="7">7 días</button>
-      <button class="filtro-rango" data-rango="30">30 días</button>
-      <button class="filtro-rango" data-rango="90">90 días</button>
-      <button class="filtro-rango" data-rango="todo">Todo</button>
+    <div class="analitica__grupo-filtro">
+      <span class="analitica__etiqueta-filtro">Curso escolar</span>
+      <div class="filtros-rango" id="filtrosCurso" role="group" aria-label="Curso escolar"></div>
+    </div>
+    <div class="analitica__grupo-filtro">
+      <span class="analitica__etiqueta-filtro">Periodo</span>
+      <div class="filtros-rango" id="filtrosRango" role="group" aria-label="Rango de fechas">
+        <button class="filtro-rango" data-rango="7">7 días</button>
+        <button class="filtro-rango" data-rango="30">30 días</button>
+        <button class="filtro-rango" data-rango="90">90 días</button>
+        <button class="filtro-rango" data-rango="todo">Todo</button>
+      </div>
     </div>
   </div>
 
@@ -132,6 +142,10 @@ exigirAdmin();
   </div>
 </main>
 
+<script>
+  // Curso escolar actual (p. ej. "curso_2026"): rango con el que arranca el panel.
+  const RANGO_INICIAL = <?= json_encode($rangoInicial) ?>;
+</script>
 <script src="../assets/js/conexion.js?v=<?= filemtime(__DIR__ . '/../assets/js/conexion.js') ?>"></script>
 <script src="../assets/js/analitica.js?v=<?= filemtime(__DIR__ . '/../assets/js/analitica.js') ?>"></script>
 </body>

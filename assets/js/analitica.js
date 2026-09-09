@@ -4,10 +4,11 @@
 (() => {
   'use strict';
 
-  const cargando  = document.getElementById('analiticaCargando');
-  const vacio     = document.getElementById('analiticaVacio');
-  const contenido = document.getElementById('analiticaContenido');
-  const filtros   = document.getElementById('filtrosRango');
+  const cargando   = document.getElementById('analiticaCargando');
+  const vacio      = document.getElementById('analiticaVacio');
+  const contenido  = document.getElementById('analiticaContenido');
+  const controles  = document.querySelector('.analitica__controles');
+  const filtrosCurso = document.getElementById('filtrosCurso');
 
   const COLORES_CATEGORIA = {
     estrella:             { color: '#c8952f', fondo: '#fbf1de' },
@@ -27,7 +28,8 @@
   const PALETA_GRAFICOS = ['#1f3d2b', '#c8952f', '#1f5d8c', '#a63428', '#2d7a45', '#8a4fae', '#b8621b', '#7a7a70'];
 
   let graficos = {};
-  let rangoActual = '30';
+  let rangoActual = typeof RANGO_INICIAL !== 'undefined' ? RANGO_INICIAL : '30';
+  let cursosPintados = false;
 
   const euros = (n) => Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
@@ -41,9 +43,7 @@
 
   async function cargar(rango) {
     rangoActual = rango;
-    filtros.querySelectorAll('.filtro-rango').forEach((b) => {
-      b.setAttribute('aria-pressed', String(b.dataset.rango === rango));
-    });
+    marcarFiltroActivo(rango);
 
     cargando.hidden = false;
     contenido.hidden = true;
@@ -58,6 +58,12 @@
       if (!datos.ok) throw new Error(datos.error || 'No se han podido cargar los datos.');
 
       cargando.hidden = true;
+
+      if (!cursosPintados) {
+        pintarFiltrosCurso(datos.cursos || []);
+        cursosPintados = true;
+        marcarFiltroActivo(rango);
+      }
 
       if (datos.metricas.resumen.pedidos === 0) {
         vacio.hidden = false;
@@ -224,7 +230,24 @@
 
   /* ---------- Filtros ---------- */
 
-  filtros.addEventListener('click', (evento) => {
+  function marcarFiltroActivo(rango) {
+    controles.querySelectorAll('.filtro-rango').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.rango === rango));
+    });
+  }
+
+  // Los botones de curso escolar se generan con lo que devuelve la API
+  // (includes/analitica.php mira qué cursos tienen algún pedido), en vez de
+  // ir hardcodeados: así el panel no hay que tocarlo cada curso nuevo.
+  function pintarFiltrosCurso(cursos) {
+    filtrosCurso.innerHTML = cursos.map((curso) => `
+      <button class="filtro-rango" data-rango="${escapar(curso.valor)}">
+        ${escapar(curso.etiqueta)}${curso.actual ? ' (actual)' : ''}
+      </button>
+    `).join('');
+  }
+
+  controles.addEventListener('click', (evento) => {
     const boton = evento.target.closest('.filtro-rango');
     if (!boton) return;
     cargar(boton.dataset.rango);
