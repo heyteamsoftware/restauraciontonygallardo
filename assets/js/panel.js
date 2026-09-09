@@ -93,7 +93,14 @@
   }
 
   function botones(pedido) {
-    const borrar = `<button class="boton boton--pequeno boton--texto boton--peligro" data-accion="borrar">Borrar</button>`;
+    // Un pedido que ha llegado a completarse (aunque luego se reabra) ya
+    // tiene registro permanente fuera de la base de datos —la fila del
+    // Sheet y/o el aviso enviado— así que no se ofrece borrarlo nunca.
+    const yaCompletado = pedido.estado === 'completado' || pedido.estado === 'archivado'
+      || pedido.aviso_enviado || pedido.registrado_hoja;
+    const borrar = yaCompletado
+      ? ''
+      : `<button class="boton boton--pequeno boton--texto boton--peligro" data-accion="borrar">Borrar</button>`;
 
     switch (pedido.estado) {
       case 'pendiente':

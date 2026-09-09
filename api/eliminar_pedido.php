@@ -5,6 +5,11 @@
  * cascada). A diferencia de "cancelar", esto lo quita por completo del
  * panel y de las estadísticas del día.
  *
+ * Un pedido que ha llegado a completarse NO se puede borrar nunca, ni
+ * aunque se reabra después: ya tiene un registro permanente fuera de esta
+ * base de datos (la fila en Google Sheets y/o el aviso enviado al alumno),
+ * y borrarlo aquí dejaría esos registros huérfanos o inconsistentes.
+ *
  * Cuerpo (JSON): { id, csrf }
  */
 
@@ -29,11 +34,22 @@ if ($id <= 0) {
     jsonError('Pedido no indicado.', 422);
 }
 
-$borrar = bd()->prepare('DELETE FROM pedidos WHERE id = ?');
-$borrar->execute([$id]);
+$consulta = bd()->prepare('SELECT estado, aviso_enviado, registrado_hoja FROM pedidos WHERE id = ?');
+$consulta->execute([$id]);
+$pedido = $consulta->fetch();
 
-if ($borrar->rowCount() === 0) {
+if (!$pedido) {
     jsonError('El pedido ya no existe.', 404);
 }
+
+$yaCompletado = in_array($pedido['estado'], ['completado', 'archivado'], true)
+    || $pedido['aviso_enviado']
+    || $pedido['registrado_hoja'];
+
+if ($yaCompletado) {
+    jsonError('Un pedido que ya se ha completado no se puede borrar, para no perder su registro.', 409);
+}
+
+bd()->prepare('DELETE FROM pedidos WHERE id = ?')->execute([$id]);
 
 json(['ok' => true]);
