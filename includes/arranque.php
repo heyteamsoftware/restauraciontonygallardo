@@ -88,31 +88,6 @@ function cuerpoJson(): array
     return is_array($datos) ? $datos : [];
 }
 
-/**
- * Valida un DNI o NIE español comprobando la letra de control.
- * Acepta minúsculas y espacios o guiones sueltos.
- */
-function dniValido(string $dni): bool
-{
-    $dni = strtoupper(preg_replace('/[\s\-\.]/', '', $dni) ?? '');
-
-    if (!preg_match('/^[XYZ0-9][0-9]{7}[A-Z]$/', $dni)) {
-        return false;
-    }
-
-    // En un NIE la letra inicial equivale a un dígito.
-    $numero = strtr(substr($dni, 0, 8), ['X' => '0', 'Y' => '1', 'Z' => '2']);
-    $letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
-
-    return $letras[((int) $numero) % 23] === substr($dni, -1);
-}
-
-/** Normaliza un DNI al formato con el que se guarda: 8 dígitos + letra en mayúscula. */
-function normalizarDni(string $dni): string
-{
-    return strtoupper(preg_replace('/[\s\-\.]/', '', $dni) ?? '');
-}
-
 /** Genera el código corto que se le enseña al alumno (p. ej. "C-4F7B"). */
 function generarCodigo(): string
 {

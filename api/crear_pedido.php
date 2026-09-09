@@ -4,7 +4,9 @@
  * Recibe el pedido del alumno, lo valida y lo guarda.
  *
  * Cuerpo (JSON):
- *   { nombre, dni, email, notas, lineas: [{ producto_id, cantidad }] }
+ *   { nombre, email, notas, lineas: [{ producto_id, cantidad }] }
+ *   email es opcional: si se deja en blanco, simplemente no se avisa al
+ *   alumno cuando el pedido esté listo.
  * Respuesta:
  *   { ok: true, codigo: "C-4F7B", total: 5.5 }
  */
@@ -33,14 +35,10 @@ if (mb_strlen($nombre) < 3 || mb_strlen($nombre) > 120) {
     $errores['nombre'] = 'Escribe tu nombre y apellidos.';
 }
 
-$dni = normalizarDni((string) ($datos['dni'] ?? ''));
-if (!dniValido($dni)) {
-    $errores['dni'] = 'El DNI no es válido. Revisa los números y la letra.';
-}
-
+// El correo es opcional: solo se valida el formato si se ha rellenado.
 $email = trim((string) ($datos['email'] ?? ''));
-if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 150) {
-    $errores['email'] = 'El correo electrónico no es válido.';
+if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 150)) {
+    $errores['email'] = 'Ese correo no parece válido. Corrígelo o déjalo en blanco.';
 }
 
 $notas = trim((string) ($datos['notas'] ?? ''));
@@ -109,15 +107,23 @@ foreach ($productos as $producto) {
 }
 
 // ---------------------------------------------------------------------
-//  Freno básico contra el spam: pocos pedidos activos por DNI
+//  Freno básico contra el spam: pocos pedidos activos por navegador.
+//  Al no pedir DNI, se usa la sesión del propio navegador (una cookie),
+//  sin guardar ningún dato personal adicional.
 // ---------------------------------------------------------------------
-$activos = bd()->prepare(
-    "SELECT COUNT(*) FROM pedidos
-      WHERE dni = ? AND estado IN ('pendiente','en_curso') AND DATE(creado_en) = CURDATE()"
-);
-$activos->execute([$dni]);
-if ((int) $activos->fetchColumn() >= 3) {
-    jsonError('Ya tienes varios pedidos pendientes de recoger. Pásate por la cafetería primero.', 429);
+iniciarSesion();
+$misPedidos = $_SESSION['mis_pedidos'] ?? [];
+
+if ($misPedidos) {
+    $marcadoresPedidos = implode(',', array_fill(0, count($misPedidos), '?'));
+    $activos = bd()->prepare(
+        "SELECT COUNT(*) FROM pedidos
+          WHERE id IN ($marcadoresPedidos) AND estado IN ('pendiente','en_curso') AND DATE(creado_en) = CURDATE()"
+    );
+    $activos->execute($misPedidos);
+    if ((int) $activos->fetchColumn() >= 3) {
+        jsonError('Ya tienes varios pedidos pendientes de recoger. Pásate por la cafetería primero.', 429);
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -132,10 +138,10 @@ try {
         $codigo = generarCodigo();
         try {
             $insertar = $pdo->prepare(
-                'INSERT INTO pedidos (codigo, nombre, dni, email, estado, total, notas, creado_en, actualizado_en)
-                 VALUES (?, ?, ?, ?, "pendiente", ?, ?, NOW(), NOW())'
+                'INSERT INTO pedidos (codigo, nombre, email, estado, total, notas, creado_en, actualizado_en)
+                 VALUES (?, ?, ?, "pendiente", ?, ?, NOW(), NOW())'
             );
-            $insertar->execute([$codigo, $nombre, $dni, $email, $total, $notas ?: null]);
+            $insertar->execute([$codigo, $nombre, $email, $total, $notas ?: null]);
             break;
         } catch (PDOException $e) {
             // 23000 = clave duplicada. Cualquier otro error se propaga.
@@ -167,6 +173,10 @@ try {
     error_log('Error al guardar el pedido: ' . $e->getMessage());
     jsonError('No hemos podido guardar el pedido. Inténtalo de nuevo.', 500);
 }
+
+// Se recuerda este pedido en la sesión, para el freno anti-spam de arriba.
+$misPedidos[] = $pedidoId;
+$_SESSION['mis_pedidos'] = array_slice($misPedidos, -20);
 
 json([
     'ok'     => true,

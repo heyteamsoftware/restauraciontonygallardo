@@ -39,6 +39,13 @@ return [
         'nombre_envio' => 'Cafetería del instituto',
     ],
 
+    // --- Registro en Google Sheets -----------------------------------
+    // URL de la implementación del Apps Script (termina en /exec).
+    // Déjalo vacío ('') para no registrar nada.
+    'hoja' => [
+        'webhook' => '',
+    ],
+
     // --- Ajustes generales ------------------------------------------
     'app' => [
         'nombre'          => 'Cafetería del instituto',

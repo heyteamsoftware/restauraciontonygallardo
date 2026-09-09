@@ -68,8 +68,10 @@
       ? `<p class="pedido__notas">📝 ${escapar(pedido.notas)}</p>`
       : '';
 
-    const avisoFallido = pedido.estado === 'completado' && !pedido.aviso_enviado
-      ? '<p class="pedido__aviso-fallido">Sin aviso por correo</p>'
+    // Solo se avisa del fallo si dejó un correo y aun así no se pudo enviar;
+    // si no dejó correo, no haber avisado es lo esperado, no un error.
+    const avisoFallido = pedido.estado === 'completado' && !pedido.aviso_enviado && pedido.email
+      ? '<p class="pedido__aviso-fallido">No se pudo avisar por correo</p>'
       : '';
 
     articulo.innerHTML = `
@@ -78,7 +80,7 @@
         <span class="pedido__hora">${escapar(pedido.hora)}</span>
       </header>
       <p class="pedido__alumno">${escapar(pedido.nombre)}</p>
-      <p class="pedido__dni">${escapar(pedido.dni)}</p>
+      ${pedido.email ? `<p class="pedido__email">${escapar(pedido.email)}</p>` : ''}
       <ul class="pedido__lineas">${lineas}</ul>
       ${notas}
       <p class="pedido__total">${euros(pedido.total)}</p>
@@ -89,15 +91,20 @@
   }
 
   function botones(pedido) {
+    const borrar = `<button class="boton boton--pequeno boton--texto boton--peligro" data-accion="borrar">Borrar</button>`;
+
     switch (pedido.estado) {
       case 'pendiente':
         return `<button class="boton boton--pequeno boton--principal" data-estado="en_curso">Empezar</button>
-                <button class="boton boton--pequeno boton--texto" data-estado="cancelado">Cancelar</button>`;
+                <button class="boton boton--pequeno boton--texto" data-estado="cancelado">Cancelar</button>
+                ${borrar}`;
       case 'en_curso':
         return `<button class="boton boton--pequeno boton--principal" data-estado="completado">Listo · avisar</button>
-                <button class="boton boton--pequeno boton--texto" data-estado="pendiente">Volver atrás</button>`;
+                <button class="boton boton--pequeno boton--texto" data-estado="pendiente">Volver atrás</button>
+                ${borrar}`;
       default:
-        return `<button class="boton boton--pequeno boton--texto" data-estado="en_curso">Reabrir</button>`;
+        return `<button class="boton boton--pequeno boton--texto" data-estado="en_curso">Reabrir</button>
+                ${borrar}`;
     }
   }
 
@@ -133,9 +140,27 @@
     primeraCarga = false;
   }
 
+  /* ---------- Indicador de conexión ----------
+     Combina la red del dispositivo (navigator.onLine) con el resultado
+     real de cada consulta al servidor: puede haber wifi y aun así el
+     servidor no responder (o al revés, un falso "sin red" del navegador). */
+
+  function pintarConexion(estado, texto) {
+    estadoConexion.className = 'estado-conexion indicador-conexion indicador-conexion--' + estado;
+    estadoConexion.innerHTML = '<span class="indicador-conexion__punto" aria-hidden="true"></span><span>' + texto + '</span>';
+  }
+
+  window.addEventListener('offline', () => pintarConexion('error', 'Sin red'));
+  window.addEventListener('online', refrescar);
+
   /* ---------- Consulta al servidor ---------- */
 
   async function refrescar() {
+    if (!navigator.onLine) {
+      pintarConexion('error', 'Sin red');
+      return;
+    }
+
     try {
       const parametros = new URLSearchParams({ fecha });
       if (firma) parametros.set('firma', firma);
@@ -145,8 +170,7 @@
       });
 
       if (respuesta.status === 401) {
-        estadoConexion.textContent = 'Sesión caducada';
-        estadoConexion.className = 'estado-conexion estado-conexion--error';
+        pintarConexion('error', 'Sesión caducada');
         clearInterval(temporizador);
         window.location.href = 'index.php';
         return;
@@ -158,14 +182,50 @@
       firma = datos.firma;
       if (!datos.sin_cambios) pintar(datos);
 
-      estadoConexion.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES');
-      estadoConexion.className = 'estado-conexion';
+      pintarConexion('ok', 'Actualizado ' + new Date().toLocaleTimeString('es-ES'));
 
     } catch (error) {
-      estadoConexion.textContent = 'Sin conexión, reintentando…';
-      estadoConexion.className = 'estado-conexion estado-conexion--error';
+      pintarConexion('error', 'Sin conexión, reintentando…');
     }
   }
+
+  /* ---------- Borrar pedido (disponible en cualquier estado) ---------- */
+
+  document.querySelector('.tablero').addEventListener('click', async (evento) => {
+    const botonBorrar = evento.target.closest('button[data-accion="borrar"]');
+    if (!botonBorrar) return;
+
+    const tarjeta = botonBorrar.closest('.pedido');
+    const id = Number(tarjeta.dataset.id);
+    const codigo = tarjeta.querySelector('.pedido__codigo')?.textContent || '';
+
+    if (!confirm(`¿Borrar el pedido ${codigo}? No se puede deshacer.`)) return;
+
+    tarjeta.classList.add('pedido--ocupado');
+    tarjeta.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+
+    try {
+      const respuesta = await fetch('../api/eliminar_pedido.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, csrf: CSRF }),
+      });
+      const datos = await respuesta.json();
+
+      if (!datos.ok) {
+        alert(datos.error || 'No se ha podido borrar el pedido.');
+        tarjeta.classList.remove('pedido--ocupado');
+        tarjeta.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+      }
+    } catch {
+      alert('Sin conexión. El pedido no se ha borrado.');
+      tarjeta.classList.remove('pedido--ocupado');
+      tarjeta.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+    } finally {
+      firma = null;
+      await refrescar();
+    }
+  });
 
   /* ---------- Cambio de estado ---------- */
 

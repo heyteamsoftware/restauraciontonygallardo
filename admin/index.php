@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Acceso · <?= e($CONFIG['app']['nombre']) ?></title>
   <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="../assets/css/estilos.css">
+  <link rel="stylesheet" href="../assets/css/estilos.css?v=<?= filemtime(__DIR__ . '/../assets/css/estilos.css') ?>">
 </head>
 <body class="pagina-login">
 

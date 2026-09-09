@@ -22,7 +22,7 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pedidos · <?= e($CONFIG['app']['nombre']) ?></title>
   <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="../assets/css/estilos.css">
+  <link rel="stylesheet" href="../assets/css/estilos.css?v=<?= filemtime(__DIR__ . '/../assets/css/estilos.css') ?>">
 </head>
 <body class="pagina-panel">
 
@@ -84,6 +84,6 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
   const CSRF = <?= json_encode(tokenCsrf()) ?>;
   const FECHA_INICIAL = <?= json_encode($fecha) ?>;
 </script>
-<script src="../assets/js/panel.js"></script>
+<script src="../assets/js/panel.js?v=<?= filemtime(__DIR__ . '/../assets/js/panel.js') ?>"></script>
 </body>
 </html>

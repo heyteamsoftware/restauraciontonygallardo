@@ -16,13 +16,14 @@ exigirAdmin();
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Productos · <?= e($CONFIG['app']['nombre']) ?></title>
   <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="../assets/css/estilos.css">
+  <link rel="stylesheet" href="../assets/css/estilos.css?v=<?= filemtime(__DIR__ . '/../assets/css/estilos.css') ?>">
 </head>
 <body class="pagina-panel">
 
 <header class="barra">
   <div class="barra__interior">
     <span class="barra__marca">Cafetería · Productos</span>
+    <span class="indicador-conexion" id="indicadorConexion" aria-live="polite"></span>
     <nav class="barra__nav">
       <a class="barra__enlace" href="panel.php">Pedidos</a>
       <a class="barra__enlace barra__enlace--activo" href="productos.php">Productos</a>
@@ -82,6 +83,7 @@ exigirAdmin();
 <script>
   const CSRF = <?= json_encode(tokenCsrf()) ?>;
 </script>
-<script src="../assets/js/productos.js"></script>
+<script src="../assets/js/conexion.js?v=<?= filemtime(__DIR__ . '/../assets/js/conexion.js') ?>"></script>
+<script src="../assets/js/productos.js?v=<?= filemtime(__DIR__ . '/../assets/js/productos.js') ?>"></script>
 </body>
 </html>

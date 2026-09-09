@@ -167,4 +167,12 @@
   });
 
   cargar();
+
+  /* ---------- Indicador de conexión ---------- */
+  if (window.ConexionIndicador) {
+    ConexionIndicador(document.getElementById('indicadorConexion'), {
+      urlPing: '../api/ping.php',
+      intervalo: 15000,
+    });
+  }
 })();

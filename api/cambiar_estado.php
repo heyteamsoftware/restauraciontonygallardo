@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/email.php';
+require_once __DIR__ . '/../includes/hoja_calculo.php';
 
 exigirAdmin(esApi: true);
 
@@ -48,23 +49,44 @@ bd()->prepare('UPDATE pedidos SET estado = ?, actualizado_en = NOW() WHERE id = 
     ->execute([$estado, $id]);
 
 // -----------------------------------------------------------------
-//  Aviso al alumno cuando el pedido queda listo
+//  Al completar el pedido: aviso por correo y registro en la hoja
+//  (cada uno una sola vez, aunque el pedido se reabra y se vuelva a
+//  completar más adelante).
 // -----------------------------------------------------------------
 $aviso = 'no_procede';
 
-if ($estado === 'completado' && !$pedido['aviso_enviado']) {
-    $lineas = bd()->prepare('SELECT * FROM pedido_lineas WHERE pedido_id = ? ORDER BY id');
-    $lineas->execute([$id]);
-
+if ($estado === 'completado') {
     $pedido['estado'] = $estado;
-    $enviado = avisarPedidoListo($pedido, $lineas->fetchAll());
 
-    if ($enviado) {
-        bd()->prepare('UPDATE pedidos SET aviso_enviado = 1 WHERE id = ?')->execute([$id]);
-        $aviso = 'enviado';
-    } else {
-        // El pedido queda completado igualmente; solo falló el correo.
-        $aviso = 'fallido';
+    $necesitaLineas = !$pedido['aviso_enviado'] || !$pedido['registrado_hoja'];
+    $lineas = [];
+    if ($necesitaLineas) {
+        $consultaLineas = bd()->prepare('SELECT * FROM pedido_lineas WHERE pedido_id = ? ORDER BY id');
+        $consultaLineas->execute([$id]);
+        $lineas = $consultaLineas->fetchAll();
+    }
+
+    if (!$pedido['aviso_enviado']) {
+        if (empty($pedido['email'])) {
+            // El alumno no dejó correo: no hay a quién avisar.
+            $aviso = 'sin_email';
+        } else {
+            $enviado = avisarPedidoListo($pedido, $lineas);
+            if ($enviado) {
+                bd()->prepare('UPDATE pedidos SET aviso_enviado = 1 WHERE id = ?')->execute([$id]);
+                $aviso = 'enviado';
+            } else {
+                // El pedido queda completado igualmente; solo falló el correo.
+                $aviso = 'fallido';
+            }
+        }
+    }
+
+    if (!$pedido['registrado_hoja']) {
+        if (registrarPedidoEnHoja($pedido, $lineas)) {
+            bd()->prepare('UPDATE pedidos SET registrado_hoja = 1 WHERE id = ?')->execute([$id]);
+        }
+        // Si falla, no se bloquea nada: el pedido sigue completado igual.
     }
 }
 

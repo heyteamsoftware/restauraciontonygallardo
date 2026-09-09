@@ -1,5 +1,5 @@
 /* =============================================================
-   Página del alumno: contadores, validación y envío del pedido.
+   Página del alumno: contadores, paso 1/2, validación y envío.
    ============================================================= */
 (() => {
   'use strict';
@@ -7,11 +7,16 @@
   const formulario = document.getElementById('formularioPedido');
   if (!formulario) return;                 // no hay productos que pedir
 
-  const bloquePedido   = document.getElementById('bloquePedido');
-  const confirmacion   = document.getElementById('confirmacion');
-  const botonEnviar    = document.getElementById('botonEnviar');
+  const bloquePedido    = document.getElementById('bloquePedido');
+  const confirmacion    = document.getElementById('confirmacion');
+  const paso1           = document.getElementById('paso1');
+  const paso2           = document.getElementById('paso2');
+  const botonSiguiente  = document.getElementById('botonSiguiente');
+  const botonVolver     = document.getElementById('botonVolver');
+  const botonEnviar     = document.getElementById('botonEnviar');
   const resumenUnidades = document.getElementById('resumenUnidades');
-  const resumenTotal   = document.getElementById('resumenTotal');
+  const resumenTotal    = document.getElementById('resumenTotal');
+  const resumenPedido   = document.getElementById('resumenPedido');
 
   const euros = (n) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
@@ -47,10 +52,12 @@
     document.querySelectorAll('.contador').forEach((contador) => {
       const cantidad = Number(contador.querySelector('.contador__valor').value || 0);
       if (cantidad > 0) {
+        const fila = contador.closest('.producto');
         lineas.push({
           producto_id: Number(contador.dataset.producto),
           cantidad,
-          precio: Number(contador.closest('.producto').dataset.precio),
+          precio: Number(fila.dataset.precio),
+          nombre: fila.querySelector('.producto__nombre').textContent,
         });
       }
     });
@@ -64,7 +71,7 @@
 
     resumenUnidades.textContent = unidades === 1 ? '1 producto' : `${unidades} productos`;
     resumenTotal.textContent = euros(total);
-    botonEnviar.disabled = unidades === 0;
+    botonSiguiente.disabled = unidades === 0;
 
     // Marca visualmente las filas con unidades elegidas.
     document.querySelectorAll('.producto').forEach((fila) => {
@@ -72,6 +79,41 @@
       fila.classList.toggle('producto--elegido', cantidad > 0);
     });
   }
+
+  function pintarResumenPaso2() {
+    const lineas = lineasElegidas();
+    const total = lineas.reduce((suma, l) => suma + l.cantidad * l.precio, 0);
+
+    resumenPedido.innerHTML = lineas
+      .map((l) => `<div class="resumen-pedido__linea"><span>${l.cantidad}× ${escapar(l.nombre)}</span><span>${euros(l.cantidad * l.precio)}</span></div>`)
+      .join('') + `<div class="resumen-pedido__total"><span>Total</span><span>${euros(total)}</span></div>`;
+  }
+
+  function escapar(texto) {
+    const div = document.createElement('div');
+    div.textContent = texto ?? '';
+    return div.innerHTML;
+  }
+
+  /* ---------- Navegación entre pasos ---------- */
+
+  function irAPaso(numero) {
+    if (numero === 2) pintarResumenPaso2();
+    paso1.hidden = numero !== 1;
+    paso2.hidden = numero !== 2;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  botonSiguiente.addEventListener('click', () => {
+    limpiarErrores();
+    if (lineasElegidas().length === 0) {
+      mostrarError('productos', 'Elige al menos un producto.');
+      return;
+    }
+    irAPaso(2);
+  });
+
+  botonVolver.addEventListener('click', () => irAPaso(1));
 
   /* ---------- Errores ---------- */
 
@@ -95,15 +137,6 @@
      El servidor vuelve a validarlo todo; esto es solo para dar
      una respuesta inmediata al alumno.                          */
 
-  const LETRAS_DNI = 'TRWAGMYFPDXBNJZSQVHLCKE';
-
-  function dniValido(valor) {
-    const dni = valor.replace(/[\s\-.]/g, '').toUpperCase();
-    if (!/^[XYZ0-9]\d{7}[A-Z]$/.test(dni)) return false;
-    const numero = dni.slice(0, 8).replace(/^X/, '0').replace(/^Y/, '1').replace(/^Z/, '2');
-    return LETRAS_DNI[Number(numero) % 23] === dni.slice(-1);
-  }
-
   function validar(datos) {
     let correcto = true;
 
@@ -111,12 +144,9 @@
       mostrarError('nombre', 'Escribe tu nombre y apellidos.');
       correcto = false;
     }
-    if (!dniValido(datos.dni)) {
-      mostrarError('dni', 'El DNI no es válido. Revisa los números y la letra.');
-      correcto = false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(datos.email)) {
-      mostrarError('email', 'Escribe un correo electrónico válido.');
+    // El correo es opcional: solo se valida el formato si se ha rellenado.
+    if (datos.email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(datos.email)) {
+      mostrarError('email', 'Ese correo no parece válido. Corrígelo o déjalo en blanco.');
       correcto = false;
     }
     if (datos.lineas.length === 0) {
@@ -135,13 +165,13 @@
 
     const datos = {
       nombre: document.getElementById('nombre').value.trim(),
-      dni:    document.getElementById('dni').value.trim(),
       email:  document.getElementById('email').value.trim(),
       notas:  document.getElementById('notas').value.trim(),
       lineas: lineasElegidas().map(({ producto_id, cantidad }) => ({ producto_id, cantidad })),
     };
 
     if (!validar(datos)) {
+      if (datos.lineas.length === 0) irAPaso(1);
       document.querySelector('.campo__error:not([hidden])')
         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -161,6 +191,7 @@
       if (!respuesta.ok || !resultado.ok) {
         if (resultado.errores) {
           Object.entries(resultado.errores).forEach(([campo, mensaje]) => mostrarError(campo, mensaje));
+          if (resultado.errores.productos) irAPaso(1);
         } else {
           mostrarError('general', resultado.error || 'No se ha podido enviar el pedido.');
         }
@@ -169,7 +200,9 @@
 
       // Todo bien: se muestra el código de recogida.
       document.getElementById('codigoPedido').textContent = resultado.codigo;
-      document.getElementById('emailConfirmacion').textContent = datos.email;
+      document.getElementById('confirmacionTexto').textContent = datos.email
+        ? `Te avisaremos a ${datos.email} en cuanto esté preparado.`
+        : 'Pásate por la cafetería de vez en cuando: al no dejar un correo, no podemos avisarte.';
       bloquePedido.hidden = true;
       confirmacion.hidden = false;
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -187,10 +220,39 @@
     document.querySelectorAll('.contador__valor').forEach((e) => { e.value = '0'; });
     limpiarErrores();
     actualizarResumen();
+    irAPaso(1);
     confirmacion.hidden = true;
     bloquePedido.hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   actualizarResumen();
+
+  /* ---------- Política de privacidad ---------- */
+  const botonPrivacidad = document.getElementById('botonPrivacidad');
+  const dialogoPrivacidad = document.getElementById('dialogoPrivacidad');
+
+  botonPrivacidad?.addEventListener('click', () => {
+    if (typeof dialogoPrivacidad.showModal === 'function') {
+      dialogoPrivacidad.showModal();
+    } else {
+      // Navegadores muy antiguos sin soporte de <dialog>: se muestra igual.
+      dialogoPrivacidad.setAttribute('open', '');
+    }
+  });
+
+  // Cerrar al hacer clic fuera del cuadro (en el fondo oscuro).
+  dialogoPrivacidad?.addEventListener('click', (evento) => {
+    if (evento.target === dialogoPrivacidad) {
+      dialogoPrivacidad.close();
+    }
+  });
+
+  /* ---------- Indicador de conexión ---------- */
+  if (window.ConexionIndicador) {
+    ConexionIndicador(document.getElementById('indicadorConexion'), {
+      intervalo: 15000,
+      textoConectado: 'En línea',
+    });
+  }
 })();
