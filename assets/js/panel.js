@@ -255,6 +255,12 @@
       } else if (datos.aviso === 'fallido') {
         alert('El pedido se ha marcado como listo, pero no se ha podido enviar el correo. Avisa al alumno de viva voz.');
       }
+
+      // El registro en el Sheet lo hace este navegador, no el servidor
+      // (ver registrarEnHoja más abajo).
+      if (datos.ok && datos.hoja) {
+        registrarEnHoja(datos.hoja);
+      }
     } catch {
       alert('Sin conexión. El cambio no se ha guardado.');
     } finally {
@@ -262,6 +268,49 @@
       await refrescar();
     }
   });
+
+  /* ---------- Registro en Google Sheets ----------
+     Se llama directamente al Apps Script desde este navegador: el servidor
+     PHP no puede alcanzar script.google.com desde InfinityFree. El truco de
+     usar Content-Type: text/plain evita el preflight CORS — Apps Script
+     igualmente lee el cuerpo como JSON. */
+
+  async function registrarEnHoja(pedido) {
+    if (!HOJA_WEBHOOK) return; // no configurado: se omite en silencio
+
+    try {
+      const respuesta = await fetch(HOJA_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'registrarPedido',
+          password: HOJA_PASSWORD,
+          codigo: pedido.codigo,
+          nombre: pedido.nombre,
+          email: pedido.email,
+          productos: pedido.productos,
+          notas: pedido.notas,
+          total: pedido.total,
+        }),
+      });
+      const resultado = await respuesta.json();
+
+      if (resultado.ok) {
+        // Se confirma al servidor para no reintentarlo si el pedido se reabre.
+        await fetch('../api/marcar_registrado_hoja.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: pedido.id, csrf: CSRF }),
+        });
+      } else {
+        console.error('No se pudo registrar en la hoja:', resultado.error);
+      }
+    } catch (error) {
+      // Sin conexión con Google, o el Sheet no está configurado todavía.
+      // No bloquea nada: el pedido sigue completado igual.
+      console.error('Error al registrar en la hoja:', error);
+    }
+  }
 
   /* ---------- Cambio de día ---------- */
 

@@ -83,6 +83,12 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
   // Datos que el JavaScript necesita del servidor.
   const CSRF = <?= json_encode(tokenCsrf()) ?>;
   const FECHA_INICIAL = <?= json_encode($fecha) ?>;
+
+  // Para registrar los pedidos completados en Google Sheets. Se llama
+  // directamente desde este navegador (ver assets/js/panel.js): el
+  // servidor no puede alcanzar script.google.com desde InfinityFree.
+  const HOJA_WEBHOOK  = <?= json_encode($CONFIG['hoja']['webhook'] ?? '') ?>;
+  const HOJA_PASSWORD = <?= json_encode($CONFIG['hoja']['password'] ?? '') ?>;
 </script>
 <script src="../assets/js/panel.js?v=<?= filemtime(__DIR__ . '/../assets/js/panel.js') ?>"></script>
 </body>

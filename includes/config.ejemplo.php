@@ -40,10 +40,18 @@ return [
     ],
 
     // --- Registro en Google Sheets -----------------------------------
-    // URL de la implementación del Apps Script (termina en /exec).
-    // Déjalo vacío ('') para no registrar nada.
+    // IMPORTANTE: este webhook NO se llama desde el servidor PHP —
+    // InfinityFree bloquea las conexiones salientes a script.google.com.
+    // Lo llama directamente el navegador del panel (assets/js/panel.js),
+    // que sí puede alcanzarlo sin problema. Estos valores solo se pasan
+    // a esa página para que el JavaScript los use.
+    //
+    // webhook: URL de la implementación del Apps Script (termina en /exec).
+    // password: debe coincidir exactamente con la constante PASS del script.
+    // Deja webhook vacío ('') para no registrar nada en el Sheet.
     'hoja' => [
-        'webhook' => '',
+        'webhook'  => '',
+        'password' => '',
     ],
 
     // --- Ajustes generales ------------------------------------------
@@ -51,7 +59,7 @@ return [
         'nombre'          => 'Cafetería del instituto',
         // Horas entre las que se aceptan pedidos (0-23). Fuera de ese
         // rango la web muestra un aviso. Pon [0, 24] para no limitar.
-        'horario_pedidos' => [7, 14],
+        'horario_pedidos' => [0, 24],
         // Máximo de unidades por producto en un mismo pedido.
         'max_por_producto' => 5,
         // Zona horaria para las fechas.

@@ -4,6 +4,12 @@
  * Cambia el estado de un pedido desde el panel.
  * Al pasarlo a "completado" se avisa al alumno por correo (una sola vez).
  *
+ * El registro en Google Sheets NO se hace aquí: InfinityFree bloquea las
+ * conexiones salientes a script.google.com desde el servidor. En su lugar,
+ * esta respuesta incluye los datos del pedido (bloque "hoja") para que sea
+ * el propio navegador del panel (assets/js/panel.js) quien llame al Apps
+ * Script directamente, y luego confirme con api/marcar_registrado_hoja.php.
+ *
  * Cuerpo (JSON): { id, estado, csrf }
  */
 
@@ -11,7 +17,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/email.php';
-require_once __DIR__ . '/../includes/hoja_calculo.php';
 
 exigirAdmin(esApi: true);
 
@@ -49,11 +54,11 @@ bd()->prepare('UPDATE pedidos SET estado = ?, actualizado_en = NOW() WHERE id = 
     ->execute([$estado, $id]);
 
 // -----------------------------------------------------------------
-//  Al completar el pedido: aviso por correo y registro en la hoja
-//  (cada uno una sola vez, aunque el pedido se reabra y se vuelva a
-//  completar más adelante).
+//  Al completar el pedido: aviso por correo (una sola vez) y datos
+//  para que el navegador registre el pedido en la hoja de cálculo.
 // -----------------------------------------------------------------
 $aviso = 'no_procede';
+$hoja  = null;
 
 if ($estado === 'completado') {
     $pedido['estado'] = $estado;
@@ -83,11 +88,21 @@ if ($estado === 'completado') {
     }
 
     if (!$pedido['registrado_hoja']) {
-        if (registrarPedidoEnHoja($pedido, $lineas)) {
-            bd()->prepare('UPDATE pedidos SET registrado_hoja = 1 WHERE id = ?')->execute([$id]);
+        $productos = [];
+        foreach ($lineas as $linea) {
+            $productos[] = sprintf('%d x %s', $linea['cantidad'], $linea['nombre_producto']);
         }
-        // Si falla, no se bloquea nada: el pedido sigue completado igual.
+
+        $hoja = [
+            'id'        => $id,
+            'codigo'    => $pedido['codigo'],
+            'nombre'    => $pedido['nombre'],
+            'email'     => $pedido['email'],
+            'productos' => implode(', ', $productos),
+            'notas'     => $pedido['notas'] ?? '',
+            'total'     => (float) $pedido['total'],
+        ];
     }
 }
 
-json(['ok' => true, 'estado' => $estado, 'aviso' => $aviso]);
+json(['ok' => true, 'estado' => $estado, 'aviso' => $aviso, 'hoja' => $hoja]);

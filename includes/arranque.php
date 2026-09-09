@@ -88,16 +88,14 @@ function cuerpoJson(): array
     return is_array($datos) ? $datos : [];
 }
 
-/** Genera el código corto que se le enseña al alumno (p. ej. "C-4F7B"). */
+/** Genera el código corto que se le enseña al alumno: 4 números y 1 letra (p. ej. "1234A"). */
 function generarCodigo(): string
 {
-    // Sin caracteres ambiguos (0/O, 1/I) para que sea fácil de leer en voz alta.
-    $alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    $codigo = '';
-    for ($i = 0; $i < 4; $i++) {
-        $codigo .= $alfabeto[random_int(0, strlen($alfabeto) - 1)];
-    }
-    return 'C-' . $codigo;
+    // Sin O ni I, para no confundirlas con 0 y 1 al leerlas en voz alta.
+    $letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    $numero = random_int(0, 9999);
+    $letra  = $letras[random_int(0, strlen($letras) - 1)];
+    return sprintf('%04d%s', $numero, $letra);
 }
 
 /** ¿Estamos dentro del horario en el que se aceptan pedidos? */

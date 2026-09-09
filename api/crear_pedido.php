@@ -8,7 +8,7 @@
  *   email es opcional: si se deja en blanco, simplemente no se avisa al
  *   alumno cuando el pedido esté listo.
  * Respuesta:
- *   { ok: true, codigo: "C-4F7B", total: 5.5 }
+ *   { ok: true, codigo: "1234A", total: 5.5 }
  */
 
 declare(strict_types=1);
