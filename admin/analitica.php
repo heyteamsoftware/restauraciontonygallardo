@@ -73,12 +73,6 @@ exigirAdmin();
       </div>
     </section>
 
-    <!-- ---------- Recomendaciones ---------- -->
-    <section class="bloque-analitica">
-      <h2 class="bloque-analitica__titulo">Recomendaciones</h2>
-      <div class="recomendaciones" id="recomendaciones"></div>
-    </section>
-
     <!-- ---------- Gráficos ---------- -->
     <section class="bloque-analitica">
       <h2 class="bloque-analitica__titulo">Evolución de ventas</h2>
@@ -134,6 +128,12 @@ exigirAdmin();
           <tbody id="tablaDetalle"></tbody>
         </table>
       </div>
+    </section>
+
+    <!-- ---------- Recomendaciones ---------- -->
+    <section class="bloque-analitica">
+      <h2 class="bloque-analitica__titulo">Recomendaciones</h2>
+      <div class="recomendaciones" id="recomendaciones"></div>
     </section>
 
   </div>
