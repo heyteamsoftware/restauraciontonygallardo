@@ -1,0 +1,12 @@
+# El código interno no debe ser accesible desde el navegador.
+RedirectMatch 404 ^/.*/includes/.*$
+
+# Cabeceras de seguridad básicas.
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "same-origin"
+</IfModule>
+
+# No listar el contenido de las carpetas.
+Options -Indexes

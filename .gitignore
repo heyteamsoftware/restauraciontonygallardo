@@ -1,0 +1,16 @@
+# Configuración con contraseñas: nunca se sube al repositorio.
+includes/config.php
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Registros
+*.log
+error_log
