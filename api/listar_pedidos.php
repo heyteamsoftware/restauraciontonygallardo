@@ -16,6 +16,15 @@ require_once __DIR__ . '/../includes/auth.php';
 
 exigirAdmin(esApi: true);
 
+// Los pedidos completados pasan solos a "archivado" 6 horas después de
+// completarse. No hay tarea programada (cron) en este hosting, así que se
+// revisa aquí, en cada consulta del panel — es barato y el panel se
+// consulta cada pocos segundos, así que en la práctica es casi inmediato.
+bd()->exec(
+    "UPDATE pedidos SET estado = 'archivado'
+      WHERE estado = 'completado' AND actualizado_en <= NOW() - INTERVAL 6 HOUR"
+);
+
 $fecha = (string) ($_GET['fecha'] ?? date('Y-m-d'));
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
     $fecha = date('Y-m-d');
@@ -38,7 +47,7 @@ $consulta = bd()->prepare(
             creado_en, actualizado_en
        FROM pedidos
       WHERE DATE(creado_en) = ?
-      ORDER BY FIELD(estado, "pendiente", "en_curso", "completado", "cancelado"), creado_en'
+      ORDER BY FIELD(estado, "pendiente", "en_curso", "completado", "archivado", "cancelado"), creado_en'
 );
 $consulta->execute([$fecha]);
 $pedidos = $consulta->fetchAll();
@@ -63,7 +72,7 @@ if ($pedidos) {
 }
 
 $resultado = [];
-$resumen = ['pendiente' => 0, 'en_curso' => 0, 'completado' => 0, 'cancelado' => 0];
+$resumen = ['pendiente' => 0, 'en_curso' => 0, 'completado' => 0, 'archivado' => 0, 'cancelado' => 0];
 
 foreach ($pedidos as $pedido) {
     $id = (int) $pedido['id'];

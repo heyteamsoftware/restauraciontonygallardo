@@ -13,11 +13,13 @@
     pendiente:  document.getElementById('col-pendiente'),
     en_curso:   document.getElementById('col-en_curso'),
     completado: document.getElementById('col-completado'),
+    archivado:  document.getElementById('col-archivado'),
   };
   const cuentas = {
     pendiente:  document.getElementById('cuentaPendiente'),
     en_curso:   document.getElementById('cuentaEnCurso'),
     completado: document.getElementById('cuentaCompletado'),
+    archivado:  document.getElementById('cuentaArchivado'),
   };
   const entradaFecha   = document.getElementById('fecha');
   const estadoConexion = document.getElementById('estadoConexion');
@@ -125,6 +127,7 @@
     cuentas.pendiente.textContent  = datos.resumen.pendiente;
     cuentas.en_curso.textContent   = datos.resumen.en_curso;
     cuentas.completado.textContent = datos.resumen.completado;
+    cuentas.archivado.textContent  = datos.resumen.archivado;
 
     mensajeVacio.hidden = datos.pedidos.length > 0;
 

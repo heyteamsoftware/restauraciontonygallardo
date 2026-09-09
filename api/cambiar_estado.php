@@ -33,7 +33,7 @@ if (!comprobarCsrf($datos['csrf'] ?? null)) {
 $id     = (int) ($datos['id'] ?? 0);
 $estado = (string) ($datos['estado'] ?? '');
 
-$estadosValidos = ['pendiente', 'en_curso', 'completado', 'cancelado'];
+$estadosValidos = ['pendiente', 'en_curso', 'completado', 'archivado', 'cancelado'];
 if ($id <= 0 || !in_array($estado, $estadosValidos, true)) {
     jsonError('Datos incorrectos.', 422);
 }

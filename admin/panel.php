@@ -49,6 +49,7 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
       <span class="contador-estado contador-estado--pendiente">Pendientes <b id="cuentaPendiente">0</b></span>
       <span class="contador-estado contador-estado--en_curso">En curso <b id="cuentaEnCurso">0</b></span>
       <span class="contador-estado contador-estado--completado">Completados <b id="cuentaCompletado">0</b></span>
+      <span class="contador-estado contador-estado--archivado">Archivados <b id="cuentaArchivado">0</b></span>
     </div>
 
     <label class="interruptor">
@@ -73,6 +74,12 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
     <section class="columna" data-estado="completado">
       <h2 class="columna__titulo">Completados</h2>
       <div class="columna__lista" id="col-completado"></div>
+    </section>
+
+    <section class="columna" data-estado="archivado">
+      <h2 class="columna__titulo">Archivados</h2>
+      <p class="columna__ayuda">Un pedido completado pasa aquí solo a las 6 horas.</p>
+      <div class="columna__lista" id="col-archivado"></div>
     </section>
   </div>
 

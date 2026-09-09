@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
   codigo         VARCHAR(12)   NOT NULL,
   nombre         VARCHAR(120)  NOT NULL,
   email          VARCHAR(150)  NOT NULL,
-  estado         ENUM('pendiente','en_curso','completado','cancelado')
+  estado         ENUM('pendiente','en_curso','completado','archivado','cancelado')
                                NOT NULL DEFAULT 'pendiente',
   total          DECIMAL(6,2)  NOT NULL DEFAULT 0.00,
   notas          VARCHAR(255)  NULL,
