@@ -32,6 +32,7 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
     <nav class="barra__nav">
       <a class="barra__enlace barra__enlace--activo" href="panel.php">Pedidos</a>
       <a class="barra__enlace" href="productos.php">Productos</a>
+      <a class="barra__enlace" href="analitica.php">Analítica</a>
       <a class="barra__enlace" href="salir.php">Salir</a>
     </nav>
   </div>

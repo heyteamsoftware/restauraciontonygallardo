@@ -107,26 +107,6 @@ foreach ($productos as $producto) {
 }
 
 // ---------------------------------------------------------------------
-//  Freno básico contra el spam: pocos pedidos activos por navegador.
-//  Al no pedir DNI, se usa la sesión del propio navegador (una cookie),
-//  sin guardar ningún dato personal adicional.
-// ---------------------------------------------------------------------
-iniciarSesion();
-$misPedidos = $_SESSION['mis_pedidos'] ?? [];
-
-if ($misPedidos) {
-    $marcadoresPedidos = implode(',', array_fill(0, count($misPedidos), '?'));
-    $activos = bd()->prepare(
-        "SELECT COUNT(*) FROM pedidos
-          WHERE id IN ($marcadoresPedidos) AND estado IN ('pendiente','en_curso') AND DATE(creado_en) = CURDATE()"
-    );
-    $activos->execute($misPedidos);
-    if ((int) $activos->fetchColumn() >= 3) {
-        jsonError('Ya tienes varios pedidos pendientes de recoger. Pásate por la cafetería primero.', 429);
-    }
-}
-
-// ---------------------------------------------------------------------
 //  Guardado (pedido + líneas en una única transacción)
 // ---------------------------------------------------------------------
 $pdo = bd();
@@ -173,10 +153,6 @@ try {
     error_log('Error al guardar el pedido: ' . $e->getMessage());
     jsonError('No hemos podido guardar el pedido. Inténtalo de nuevo.', 500);
 }
-
-// Se recuerda este pedido en la sesión, para el freno anti-spam de arriba.
-$misPedidos[] = $pedidoId;
-$_SESSION['mis_pedidos'] = array_slice($misPedidos, -20);
 
 json([
     'ok'     => true,
