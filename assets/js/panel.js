@@ -256,10 +256,10 @@
         alert('El pedido se ha marcado como listo, pero no se ha podido enviar el correo. Avisa al alumno de viva voz.');
       }
 
-      // El registro en el Sheet lo hace este navegador, no el servidor
-      // (ver registrarEnHoja más abajo).
-      if (datos.ok && datos.hoja) {
-        registrarEnHoja(datos.hoja);
+      // El aviso por correo y el registro en el Sheet los hace este
+      // navegador, no el servidor (ver más abajo).
+      if (datos.ok && datos.registro) {
+        procesarRegistro(datos.registro);
       }
     } catch {
       alert('Sin conexión. El cambio no se ha guardado.');
@@ -269,47 +269,83 @@
     }
   });
 
-  /* ---------- Registro en Google Sheets ----------
-     Se llama directamente al Apps Script desde este navegador: el servidor
-     PHP no puede alcanzar script.google.com desde InfinityFree. El truco de
-     usar Content-Type: text/plain evita el preflight CORS — Apps Script
+  /* ---------- Aviso por correo y registro en Google Sheets ----------
+     Ambos se hacen llamando directamente al Apps Script desde este
+     navegador: el servidor PHP no puede alcanzar script.google.com desde
+     InfinityFree, pero el navegador del panel sí. El truco de usar
+     Content-Type: text/plain evita el preflight CORS — Apps Script
      igualmente lee el cuerpo como JSON. */
 
-  async function registrarEnHoja(pedido) {
-    if (!HOJA_WEBHOOK) return; // no configurado: se omite en silencio
+  async function llamarAppsScript(accion, datosExtra) {
+    const respuesta = await fetch(HOJA_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: accion, password: HOJA_PASSWORD, ...datosExtra }),
+    });
+    return respuesta.json();
+  }
 
-    try {
-      const respuesta = await fetch(HOJA_WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'registrarPedido',
-          password: HOJA_PASSWORD,
-          codigo: pedido.codigo,
-          nombre: pedido.nombre,
-          email: pedido.email,
-          productos: pedido.productos,
-          notas: pedido.notas,
-          total: pedido.total,
-        }),
-      });
-      const resultado = await respuesta.json();
+  async function procesarRegistro(registro) {
+    if (!HOJA_WEBHOOK) return; // Apps Script no configurado: se omite en silencio
 
-      if (resultado.ok) {
-        // Se confirma al servidor para no reintentarlo si el pedido se reabre.
-        await fetch('../api/marcar_registrado_hoja.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: pedido.id, csrf: CSRF }),
-        });
-      } else {
-        console.error('No se pudo registrar en la hoja:', resultado.error);
+    const datosPedido = {
+      codigo: registro.codigo,
+      nombre: registro.nombre,
+      email: registro.email,
+      productos: registro.productos,
+      notas: registro.notas,
+      total: registro.total,
+    };
+
+    if (registro.necesitaHoja) {
+      try {
+        const resultado = await llamarAppsScript('registrarPedido', datosPedido);
+        if (resultado.ok) {
+          await confirmarAlServidor('../api/marcar_registrado_hoja.php', registro.id);
+        } else {
+          console.error('No se pudo registrar en la hoja:', resultado.error);
+        }
+      } catch (error) {
+        console.error('Error al registrar en la hoja:', error);
       }
-    } catch (error) {
-      // Sin conexión con Google, o el Sheet no está configurado todavía.
-      // No bloquea nada: el pedido sigue completado igual.
-      console.error('Error al registrar en la hoja:', error);
     }
+
+    if (registro.necesitaAviso) {
+      try {
+        const resultado = await llamarAppsScript('email', {
+          to: registro.email,
+          asunto: `Tu pedido ${registro.codigo} ya está listo`,
+          cuerpo: textoAvisoCorreo(registro),
+        });
+        if (resultado.ok) {
+          await confirmarAlServidor('../api/marcar_aviso_enviado.php', registro.id);
+        } else {
+          console.error('No se pudo enviar el aviso por correo:', resultado.error);
+          alert('El pedido se ha marcado como listo, pero no se ha podido enviar el correo. Avisa al alumno de viva voz.');
+        }
+      } catch (error) {
+        console.error('Error al enviar el aviso por correo:', error);
+        alert('El pedido se ha marcado como listo, pero no se ha podido enviar el correo. Avisa al alumno de viva voz.');
+      }
+    }
+  }
+
+  function textoAvisoCorreo(registro) {
+    return `Hola ${registro.nombre},\n\n`
+      + `Tu pedido está listo para recoger. Enseña este código en la cafetería:\n\n`
+      + `  ${registro.codigo}\n\n`
+      + `Pedido: ${registro.productos}\n`
+      + `Total: ${euros(registro.total)}`
+      + (registro.notas ? `\n\nNotas: ${registro.notas}` : '');
+  }
+
+  async function confirmarAlServidor(url, id) {
+    // Para no reintentarlo si el pedido se reabre y se vuelve a completar.
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, csrf: CSRF }),
+    });
   }
 
   /* ---------- Cambio de día ---------- */
