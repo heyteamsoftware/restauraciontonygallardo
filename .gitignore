@@ -14,3 +14,7 @@ desktop.ini
 # Registros
 *.log
 error_log
+
+# Archivos comprimidos sueltos (copias de seguridad manuales)
+*.rar
+*.zip

@@ -3,10 +3,14 @@
  * Gestión del catálogo desde el panel.
  *
  *   GET  api/productos.php                       → lista completa
- *   POST api/productos.php  { accion: "crear",    nombre, categoria, precio, csrf }
- *   POST api/productos.php  { accion: "editar",   id, nombre, categoria, precio, csrf }
+ *   POST api/productos.php  { accion: "crear",    nombre, categoria, precio, icono, csrf }
+ *   POST api/productos.php  { accion: "editar",   id, nombre, categoria, precio, icono, csrf }
  *   POST api/productos.php  { accion: "activar",  id, activo, csrf }
  *   POST api/productos.php  { accion: "eliminar", id, csrf }
+ *
+ * icono es opcional: el nombre de archivo de assets/img/productos/, o null
+ * para no mostrar ninguno. Debe ser uno de los del catálogo de
+ * includes/iconos_productos.php — cualquier otro valor se rechaza.
  *
  * Un producto que ya aparece en algún pedido no se borra: se desactiva, para
  * no perder el histórico.
@@ -15,6 +19,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/iconos_productos.php';
 
 exigirAdmin(esApi: true);
 
@@ -23,19 +28,20 @@ exigirAdmin(esApi: true);
 // ---------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $productos = bd()->query(
-        'SELECT id, nombre, categoria, precio, activo, orden
+        'SELECT id, nombre, categoria, precio, icono, activo, orden
            FROM productos ORDER BY orden, id'
     )->fetchAll();
 
     foreach ($productos as &$producto) {
         $producto['id']     = (int) $producto['id'];
         $producto['precio'] = (float) $producto['precio'];
+        $producto['icono']  = $producto['icono'] ?: null;
         $producto['activo'] = (bool) $producto['activo'];
         $producto['orden']  = (int) $producto['orden'];
     }
     unset($producto);
 
-    json(['ok' => true, 'productos' => $productos]);
+    json(['ok' => true, 'productos' => $productos, 'iconos' => iconosProductosDisponibles()]);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -60,6 +66,8 @@ switch ($accion) {
         $nombre    = trim((string) ($datos['nombre'] ?? ''));
         $categoria = trim((string) ($datos['categoria'] ?? ''));
         $precio    = (float) ($datos['precio'] ?? 0);
+        $icono     = trim((string) ($datos['icono'] ?? ''));
+        $icono     = $icono !== '' ? $icono : null;
 
         $errores = [];
         if (mb_strlen($nombre) < 2 || mb_strlen($nombre) > 100) {
@@ -71,6 +79,9 @@ switch ($accion) {
         if ($precio < 0 || $precio > 999.99) {
             $errores['precio'] = 'El precio no es válido.';
         }
+        if (!iconoProductoValido($icono)) {
+            $errores['icono'] = 'Ese icono no existe. Elige uno de la lista.';
+        }
         if ($errores) {
             json(['ok' => false, 'errores' => $errores], 422);
         }
@@ -78,9 +89,9 @@ switch ($accion) {
         if ($accion === 'crear') {
             $siguienteOrden = (int) bd()->query('SELECT COALESCE(MAX(orden), 0) + 1 FROM productos')->fetchColumn();
             bd()->prepare(
-                'INSERT INTO productos (nombre, categoria, precio, activo, orden, creado_en)
-                 VALUES (?, ?, ?, 1, ?, NOW())'
-            )->execute([$nombre, $categoria, $precio, $siguienteOrden]);
+                'INSERT INTO productos (nombre, categoria, precio, icono, activo, orden, creado_en)
+                 VALUES (?, ?, ?, ?, 1, ?, NOW())'
+            )->execute([$nombre, $categoria, $precio, $icono, $siguienteOrden]);
 
             json(['ok' => true, 'id' => (int) bd()->lastInsertId()]);
         }
@@ -89,8 +100,8 @@ switch ($accion) {
         if ($id <= 0) {
             jsonError('Producto no indicado.', 422);
         }
-        bd()->prepare('UPDATE productos SET nombre = ?, categoria = ?, precio = ? WHERE id = ?')
-            ->execute([$nombre, $categoria, $precio, $id]);
+        bd()->prepare('UPDATE productos SET nombre = ?, categoria = ?, precio = ?, icono = ? WHERE id = ?')
+            ->execute([$nombre, $categoria, $precio, $icono, $id]);
 
         json(['ok' => true]);
 

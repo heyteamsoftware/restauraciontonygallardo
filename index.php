@@ -7,9 +7,10 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/arranque.php';
+require_once __DIR__ . '/includes/iconos_productos.php';
 
 $productos = bd()->query(
-    'SELECT id, nombre, categoria, precio
+    'SELECT id, nombre, categoria, precio, icono
        FROM productos
       WHERE activo = 1
       ORDER BY orden, id'
@@ -83,6 +84,9 @@ $abierto = dentroDeHorario();
           <ul class="productos">
             <?php foreach ($lista as $p): ?>
               <li class="producto" data-precio="<?= e((string) $p['precio']) ?>">
+                <?php if ($p['icono']): ?>
+                  <img class="producto__icono" src="assets/img/productos/<?= e($p['icono']) ?>?v=<?= versionIconos() ?>" alt="" loading="lazy">
+                <?php endif; ?>
                 <div class="producto__info">
                   <span class="producto__nombre"><?= e($p['nombre']) ?></span>
                   <span class="producto__precio"><?= number_format((float) $p['precio'], 2, ',', '.') ?> €</span>

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS productos (
   nombre       VARCHAR(100)  NOT NULL,
   categoria    VARCHAR(50)   NOT NULL,
   precio       DECIMAL(5,2)  NOT NULL DEFAULT 0.00,
+  icono        VARCHAR(60)   NULL,
   activo       TINYINT(1)    NOT NULL DEFAULT 1,
   orden        INT           NOT NULL DEFAULT 0,
   creado_en    DATETIME      NOT NULL,
@@ -64,11 +65,11 @@ CREATE TABLE IF NOT EXISTS pedido_lineas (
 --  Catálogo inicial
 --  TODO: ajustar los precios a los reales de la cafetería.
 -- -------------------------------------------------------------
-INSERT INTO productos (nombre, categoria, precio, activo, orden, creado_en) VALUES
-  ('Bocata de embutido',  'Bocatas',    2.50, 1, 1, NOW()),
-  ('Bocata de pollo',     'Bocatas',    3.00, 1, 2, NOW()),
-  ('Bocata de lomo',      'Bocatas',    3.00, 1, 3, NOW()),
-  ('Croasant mixto',      'Croasants',  2.20, 1, 4, NOW()),
-  ('Croasant vegetal',    'Croasants',  2.20, 1, 5, NOW()),
-  ('Sandwich mixto',      'Sandwiches', 2.00, 1, 6, NOW()),
-  ('Sandwich vegetal',    'Sandwiches', 2.00, 1, 7, NOW());
+INSERT INTO productos (nombre, categoria, precio, icono, activo, orden, creado_en) VALUES
+  ('Bocata de embutido',  'Bocatas',    2.50, '01-bocata-embutido.png', 1, 1, NOW()),
+  ('Bocata de pollo',     'Bocatas',    3.00, '02-bocata-pollo.png',    1, 2, NOW()),
+  ('Bocata de lomo',      'Bocatas',    3.00, '03-bocata-lomo.png',     1, 3, NOW()),
+  ('Croasant mixto',      'Croasants',  2.20, '04-croasant-mixto.png',  1, 4, NOW()),
+  ('Croasant vegetal',    'Croasants',  2.20, '05-croasant-vegetal.png',1, 5, NOW()),
+  ('Sandwich mixto',      'Sandwiches', 2.00, '06-sandwich-mixto.png',  1, 6, NOW()),
+  ('Sandwich vegetal',    'Sandwiches', 2.00, '07-sandwich-vegetal.png',1, 7, NOW());

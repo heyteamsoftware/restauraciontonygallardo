@@ -6,6 +6,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/iconos_productos.php';
 
 exigirAdmin();
 ?>
@@ -54,6 +55,12 @@ exigirAdmin();
       </div>
       <button class="boton boton--principal" type="submit">Añadir</button>
     </form>
+
+    <div class="campo campo--iconos">
+      <label>Icono <span class="campo__opcional">(opcional)</span></label>
+      <div class="selector-iconos" id="selectorIconosAlta"></div>
+    </div>
+
     <p class="campo__error" id="errorProducto" hidden></p>
   </section>
 
@@ -67,6 +74,7 @@ exigirAdmin();
       <table class="tabla">
         <thead>
           <tr>
+            <th><span class="visualmente-oculto">Icono</span></th>
             <th>Producto</th>
             <th>Categoría</th>
             <th class="tabla__derecha">Precio</th>
@@ -81,8 +89,50 @@ exigirAdmin();
 
 </main>
 
+<!-- ============ Editar producto ============ -->
+<dialog class="dialogo-producto" id="dialogoEditar">
+  <form method="dialog" class="dialogo-producto__interior" id="formularioEditar">
+    <header class="dialogo-producto__cabecera">
+      <h2>Editar producto</h2>
+      <button class="dialogo-producto__cerrar" type="button" id="botonCerrarEditar" aria-label="Cerrar">✕</button>
+    </header>
+
+    <div class="dialogo-producto__cuerpo">
+      <input type="hidden" id="editarId">
+
+      <div class="campo">
+        <label for="editarNombre">Nombre</label>
+        <input type="text" id="editarNombre" maxlength="100" required>
+      </div>
+      <div class="campo">
+        <label for="editarCategoria">Categoría</label>
+        <input type="text" id="editarCategoria" maxlength="50" list="categorias" required>
+      </div>
+      <div class="campo campo--corto">
+        <label for="editarPrecio">Precio (€)</label>
+        <input type="number" id="editarPrecio" min="0" max="999.99" step="0.05" required>
+      </div>
+
+      <div class="campo campo--iconos">
+        <label>Icono <span class="campo__opcional">(opcional)</span></label>
+        <div class="selector-iconos" id="selectorIconosEditar"></div>
+      </div>
+
+      <p class="campo__error" id="errorEditar" hidden></p>
+    </div>
+
+    <footer class="dialogo-producto__pie">
+      <button class="boton boton--texto" type="button" id="botonCancelarEditar">Cancelar</button>
+      <button class="boton boton--principal" type="submit" id="botonGuardarEditar">Guardar cambios</button>
+    </footer>
+  </form>
+</dialog>
+
 <script>
   const CSRF = <?= json_encode(tokenCsrf()) ?>;
+  // Versión del juego de iconos, para que el navegador no muestre recortes
+  // antiguos cacheados cuando se regeneran.
+  const VERSION_ICONOS = <?= json_encode((string) versionIconos()) ?>;
 </script>
 <script src="../assets/js/conexion.js?v=<?= filemtime(__DIR__ . '/../assets/js/conexion.js') ?>"></script>
 <script src="../assets/js/productos.js?v=<?= filemtime(__DIR__ . '/../assets/js/productos.js') ?>"></script>
