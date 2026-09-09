@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
   notas          VARCHAR(255)  NULL,
   aviso_enviado  TINYINT(1)    NOT NULL DEFAULT 0,
   registrado_hoja TINYINT(1)   NOT NULL DEFAULT 0,
+  fue_completado TINYINT(1)    NOT NULL DEFAULT 0,
   creado_en      DATETIME      NOT NULL,
   actualizado_en DATETIME      NOT NULL,
   UNIQUE KEY uq_pedidos_codigo (codigo),

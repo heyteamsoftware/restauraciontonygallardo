@@ -93,11 +93,10 @@
   }
 
   function botones(pedido) {
-    // Un pedido que ha llegado a completarse (aunque luego se reabra) ya
-    // tiene registro permanente fuera de la base de datos —la fila del
-    // Sheet y/o el aviso enviado— así que no se ofrece borrarlo nunca.
-    const yaCompletado = pedido.estado === 'completado' || pedido.estado === 'archivado'
-      || pedido.aviso_enviado || pedido.registrado_hoja;
+    // fue_completado es una marca permanente (nunca se desmarca): un pedido
+    // que ha llegado a completarse no se ofrece borrarlo nunca, ni aunque
+    // se reabra después.
+    const yaCompletado = pedido.fue_completado || pedido.estado === 'completado' || pedido.estado === 'archivado';
     const borrar = yaCompletado
       ? ''
       : `<button class="boton boton--pequeno boton--texto boton--peligro" data-accion="borrar">Borrar</button>`;

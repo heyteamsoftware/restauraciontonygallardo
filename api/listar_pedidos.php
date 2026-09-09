@@ -43,7 +43,7 @@ if (isset($_GET['firma']) && $_GET['firma'] === $firma) {
 }
 
 $consulta = bd()->prepare(
-    'SELECT id, codigo, nombre, email, estado, total, notas, aviso_enviado, registrado_hoja,
+    'SELECT id, codigo, nombre, email, estado, total, notas, aviso_enviado, registrado_hoja, fue_completado,
             creado_en, actualizado_en
        FROM pedidos
       WHERE DATE(creado_en) = ?
@@ -88,6 +88,7 @@ foreach ($pedidos as $pedido) {
         'notas'         => $pedido['notas'],
         'aviso_enviado' => (bool) $pedido['aviso_enviado'],
         'registrado_hoja' => (bool) $pedido['registrado_hoja'],
+        'fue_completado'  => (bool) $pedido['fue_completado'],
         'hora'          => date('H:i', strtotime($pedido['creado_en'])),
         'lineas'        => $lineasPorPedido[$id] ?? [],
     ];

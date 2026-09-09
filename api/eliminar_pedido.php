@@ -34,7 +34,7 @@ if ($id <= 0) {
     jsonError('Pedido no indicado.', 422);
 }
 
-$consulta = bd()->prepare('SELECT estado, aviso_enviado, registrado_hoja FROM pedidos WHERE id = ?');
+$consulta = bd()->prepare('SELECT estado, fue_completado FROM pedidos WHERE id = ?');
 $consulta->execute([$id]);
 $pedido = $consulta->fetch();
 
@@ -42,9 +42,9 @@ if (!$pedido) {
     jsonError('El pedido ya no existe.', 404);
 }
 
-$yaCompletado = in_array($pedido['estado'], ['completado', 'archivado'], true)
-    || $pedido['aviso_enviado']
-    || $pedido['registrado_hoja'];
+// fue_completado es una marca permanente (nunca se desmarca), así que
+// esto bloquea el borrado aunque el pedido se haya reabierto después.
+$yaCompletado = $pedido['fue_completado'] || in_array($pedido['estado'], ['completado', 'archivado'], true);
 
 if ($yaCompletado) {
     jsonError('Un pedido que ya se ha completado no se puede borrar, para no perder su registro.', 409);

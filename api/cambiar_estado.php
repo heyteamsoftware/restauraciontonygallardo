@@ -50,8 +50,15 @@ if ($pedido['estado'] === $estado) {
     json(['ok' => true, 'estado' => $estado, 'aviso' => 'sin_cambios']);
 }
 
-bd()->prepare('UPDATE pedidos SET estado = ?, actualizado_en = NOW() WHERE id = ?')
-    ->execute([$estado, $id]);
+if ($estado === 'completado') {
+    // Marca permanente: una vez completado, ya no se puede borrar el
+    // pedido nunca, ni aunque se reabra después (ver api/eliminar_pedido.php).
+    bd()->prepare('UPDATE pedidos SET estado = ?, fue_completado = 1, actualizado_en = NOW() WHERE id = ?')
+        ->execute([$estado, $id]);
+} else {
+    bd()->prepare('UPDATE pedidos SET estado = ?, actualizado_en = NOW() WHERE id = ?')
+        ->execute([$estado, $id]);
+}
 
 // -----------------------------------------------------------------
 //  Al completar el pedido: se prepara lo necesario para que el
