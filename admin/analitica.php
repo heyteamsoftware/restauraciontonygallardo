@@ -97,13 +97,6 @@ exigirAdmin();
       </div>
 
       <div class="bloque-analitica">
-        <h2 class="bloque-analitica__titulo">Ventas por hora del día</h2>
-        <div class="grafico-envoltorio">
-          <canvas id="graficoHoras"></canvas>
-        </div>
-      </div>
-
-      <div class="bloque-analitica">
         <h2 class="bloque-analitica__titulo">Ventas por día de la semana</h2>
         <div class="grafico-envoltorio">
           <canvas id="graficoDiaSemana"></canvas>

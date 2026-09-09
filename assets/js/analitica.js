@@ -193,20 +193,6 @@
       },
     });
 
-    // Por hora del día
-    graficos.horas = new Chart(document.getElementById('graficoHoras'), {
-      type: 'bar',
-      data: {
-        labels: metricas.por_hora.map((_, h) => `${h}h`),
-        datasets: [{
-          label: 'Unidades',
-          data: metricas.por_hora,
-          backgroundColor: '#1f5d8c',
-        }],
-      },
-      options: opcionesBase({ y: { beginAtZero: true } }),
-    });
-
     // Por día de la semana
     graficos.diaSemana = new Chart(document.getElementById('graficoDiaSemana'), {
       type: 'bar',
