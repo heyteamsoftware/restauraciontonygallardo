@@ -56,7 +56,7 @@ return [
 
     // --- Ajustes generales ------------------------------------------
     'app' => [
-        'nombre'          => 'Cafetería del instituto',
+        'nombre'          => 'Cafetería del CIFP Tony Gallardo',
         // Horas entre las que se aceptan pedidos (0-23). Fuera de ese
         // rango la web muestra un aviso. Pon [0, 24] para no limitar.
         'horario_pedidos' => [0, 24],

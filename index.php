@@ -173,11 +173,11 @@ $abierto = dentroDeHorario();
 
       <h3>Información básica</h3>
       <ul>
-        <li><strong>Responsable:</strong> CIFP Tony Gallardo ([CIF del centro]).</li>
+        <li><strong>Responsable:</strong> CIFP Tony Gallardo.</li>
         <li><strong>Contacto:</strong> Ctra. de las Coloradas, 35009 Las Palmas de Gran Canaria · Tel. +34 928 79 62 92.</li>
         <li><strong>Finalidad:</strong> Gestionar la comanda del pedido e identificarlo (mediante nombre o apodo) y, opcionalmente, enviar la confirmación/estado por correo electrónico.</li>
         <li><strong>Legitimación:</strong> Ejecución de la solicitud de pedido y consentimiento del usuario al facilitar el correo opcional.</li>
-        <li><strong>Conservación:</strong> Los datos se eliminarán tras la entrega del pedido o al finalizar el servicio diario.</li>
+        <li><strong>Conservación:</strong> Los datos se guardan de forma temporal durante el curso escolar, con fines de gestión y estadística de la cafetería, y se eliminan o anonimizan al finalizar el curso.</li>
         <li><strong>Derechos:</strong> Puedes solicitar la supresión o acceso a tus datos escribiendo a <a href="mailto:secretaria@iestonygallardo.com">secretaria@iestonygallardo.com</a>.</li>
       </ul>
 
@@ -186,7 +186,6 @@ $abierto = dentroDeHorario();
       <h4>1. Responsable del tratamiento</h4>
       <ul>
         <li><strong>Titular:</strong> CIFP Tony Gallardo</li>
-        <li><strong>NIF/CIF:</strong> [CIF del centro]</li>
         <li><strong>Domicilio:</strong> Ctra. de las Coloradas, 35009 Las Palmas de Gran Canaria</li>
         <li><strong>Teléfono:</strong> +34 928 79 62 92</li>
         <li><strong>Correo electrónico de contacto:</strong> <a href="mailto:secretaria@iestonygallardo.com">secretaria@iestonygallardo.com</a></li>
@@ -208,8 +207,9 @@ $abierto = dentroDeHorario();
       <h4>4. Plazo de conservación de los datos</h4>
       <p>En cumplimiento del principio de minimización y limitación del plazo de conservación:</p>
       <ul>
-        <li>Los datos serán procesados únicamente de forma temporal durante la gestión operativa de la comanda.</li>
-        <li>Al finalizar la entrega (o al cierre del servicio del día), los datos personales serán eliminados o anonimizados completamente de la base de datos de la aplicación.</li>
+        <li>Los datos se procesan en el momento de la comanda para gestionar el pedido y su entrega.</li>
+        <li>Además, se conservan de forma temporal durante el curso escolar en curso con fines de gestión interna y estadísticos de la cafetería (por ejemplo, para saber qué productos se piden más).</li>
+        <li>Al finalizar el curso escolar, los datos personales serán eliminados o anonimizados completamente de la base de datos de la aplicación.</li>
       </ul>
 
       <h4>5. Destinatarios y cesiones</h4>
