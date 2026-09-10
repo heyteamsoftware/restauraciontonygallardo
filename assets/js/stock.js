@@ -71,7 +71,12 @@
       fila.innerHTML = `
         <td>${escapar(ingrediente.nombre)}</td>
         <td class="tabla__derecha">${stockTexto}</td>
-        <td class="tabla__usado-en">${ingrediente.usado_en.length ? escapar(ingrediente.usado_en.join(', ')) : '<span class="tabla__stock-ilimitado">—</span>'}</td>
+        <td class="tabla__usado-en">${ingrediente.usado_en.length ? `
+          <details class="usado-en">
+            <summary>${ingrediente.usado_en.length} producto${ingrediente.usado_en.length === 1 ? '' : 's'}</summary>
+            <ul>${ingrediente.usado_en.map((nombre) => `<li>${escapar(nombre)}</li>`).join('')}</ul>
+          </details>
+        ` : '<span class="tabla__stock-ilimitado">—</span>'}</td>
         <td class="tabla__acciones">
           <button class="boton boton--pequeno boton--texto" data-accion="editar">Editar</button>
           ${ingrediente.stock !== 0 ? '<button class="boton boton--pequeno boton--texto boton--peligro" data-accion="vaciar">Vaciar</button>' : ''}

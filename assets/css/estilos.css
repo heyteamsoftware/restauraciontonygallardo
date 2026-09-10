@@ -650,6 +650,18 @@ a { color: var(--verde-medio); }
 .tabla__stock-ilimitado { color: var(--texto-suave); font-size: .85rem; }
 .tabla__stock-agotado { color: var(--rojo); font-weight: 700; }
 .tabla__usado-en { font-size: .85rem; color: var(--texto-suave); max-width: 260px; }
+.usado-en summary {
+  cursor: pointer;
+  color: var(--verde-oscuro);
+  font-weight: 600;
+  list-style: none;
+  white-space: nowrap;
+}
+.usado-en summary::-webkit-details-marker { display: none; }
+.usado-en summary::before { content: '▸'; display: inline-block; margin-right: .35rem; font-size: .8em; transition: transform .15s; }
+.usado-en[open] summary::before { transform: rotate(90deg); }
+.usado-en ul { list-style: none; margin: .35rem 0 0; padding: 0; white-space: normal; }
+.usado-en li { padding: .1rem 0; }
 .stock__vacio { text-align: center; color: var(--texto-suave); margin: 1.5rem 0; }
 
 .receta { display: flex; flex-direction: column; gap: .5rem; margin: .5rem 0; }
