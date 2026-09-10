@@ -20,6 +20,100 @@
 
   const euros = (n) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
+  /* ---------- Stock compartido entre productos ----------
+     Varios productos pueden usar el mismo ingrediente (p. ej. el mismo
+     pan). Al mover el contador de uno, hay que recalcular al momento
+     cuánto queda disponible en los demás que lo comparten, para no
+     poder elegir en el formulario más de lo que realmente hay. */
+
+  const productosInfo = [...document.querySelectorAll('.producto[data-producto-id]')].map((fila) => ({
+    id: Number(fila.dataset.productoId),
+    fila,
+    entrada: fila.querySelector('.contador__valor'),
+    stockBase: fila.dataset.stock === '' ? null : Number(fila.dataset.stock),
+    ingredientes: JSON.parse(fila.dataset.ingredientes || '[]'),
+    maxConfigurado: Number(fila.querySelector('.contador__valor').max),
+  }));
+
+  let disponibleBase = {}; // clave de recurso -> stock del servidor (cesta vacía)
+
+  function recursosDe(info) {
+    if (info.ingredientes.length) {
+      return info.ingredientes.map((i) => ({ clave: `ing:${i.ingrediente_id}`, cantidad: i.cantidad }));
+    }
+    if (info.stockBase !== null) {
+      return [{ clave: `prod:${info.id}`, cantidad: 1 }];
+    }
+    return [];
+  }
+
+  function reconstruirDisponibleBase() {
+    disponibleBase = {};
+    productosInfo.forEach((info) => {
+      recursosDe(info).forEach((r) => {
+        if (r.clave.startsWith('ing:')) {
+          const ingredienteId = Number(r.clave.slice(4));
+          const dato = info.ingredientes.find((i) => i.ingrediente_id === ingredienteId);
+          disponibleBase[r.clave] = dato?.stock_ingrediente ?? Infinity;
+        } else {
+          disponibleBase[r.clave] = info.stockBase ?? Infinity;
+        }
+      });
+    });
+  }
+  reconstruirDisponibleBase();
+
+  /** Recalcula, para cada producto, cuánto se puede elegir ahora mismo
+   *  teniendo en cuenta lo que ya está eligiendo el propio alumno de
+   *  cualquier otro producto que comparta ingrediente. */
+  function recalcularDisponibilidad() {
+    const disponible = { ...disponibleBase };
+
+    productosInfo.forEach((info) => {
+      const cantidad = Number(info.entrada.value || 0);
+      recursosDe(info).forEach((r) => {
+        if (disponible[r.clave] !== Infinity) disponible[r.clave] -= r.cantidad * cantidad;
+      });
+    });
+
+    let huboCambios = false;
+
+    productosInfo.forEach((info) => {
+      const recursos = recursosDe(info);
+      const cantidadActual = Number(info.entrada.value || 0);
+
+      let techo = info.maxConfigurado;
+      recursos.forEach((r) => {
+        if (disponible[r.clave] === Infinity) return;
+        const conPropio = disponible[r.clave] + r.cantidad * cantidadActual;
+        techo = Math.min(techo, Math.floor(conPropio / r.cantidad));
+      });
+      techo = Math.max(0, techo);
+
+      const etiqueta = info.fila.querySelector('.producto__stock');
+      const botones  = info.fila.querySelectorAll('.contador__boton');
+      const sinLimite = !recursos.length;
+
+      info.entrada.max = techo;
+      if (cantidadActual > techo) {
+        info.entrada.value = String(techo);
+        huboCambios = true;
+      }
+
+      if (etiqueta) {
+        etiqueta.hidden = sinLimite;
+        etiqueta.textContent = techo === 0 ? 'Agotado' : `Quedan ${techo}`;
+      }
+
+      const agotado = !sinLimite && techo === 0;
+      info.fila.classList.toggle('producto--agotado', agotado);
+      info.entrada.disabled = agotado;
+      botones.forEach((b) => { b.disabled = agotado; });
+    });
+
+    if (huboCambios) actualizarResumen();
+  }
+
   /* ---------- Contadores de unidades ---------- */
 
   function ajustar(entrada, delta) {
@@ -27,6 +121,7 @@
     const max = Number(entrada.max || 99);
     const valor = Number(entrada.value || 0) + delta;
     entrada.value = String(Math.min(max, Math.max(min, valor)));
+    recalcularDisponibilidad();
     actualizarResumen();
   }
 
@@ -43,6 +138,7 @@
     entrada.addEventListener('input', () => {
       const limpio = entrada.value.replace(/\D/g, '');
       entrada.value = limpio === '' ? '0' : String(Math.min(Number(entrada.max), Number(limpio)));
+      recalcularDisponibilidad();
       actualizarResumen();
     });
   });
@@ -236,6 +332,7 @@
     refrescarStock();
   });
 
+  recalcularDisponibilidad();
   actualizarResumen();
 
   /* ---------- Política de privacidad ---------- */
@@ -277,41 +374,14 @@
       const datos = await respuesta.json();
       if (!datos.ok) return;
 
-      document.querySelectorAll('.producto[data-producto-id]').forEach((fila) => {
-        const id = fila.dataset.productoId;
-        if (!(id in datos.stock)) return;
-
-        const stock = datos.stock[id]; // number o null (sin límite)
-        const etiqueta = fila.querySelector('.producto__stock');
-        const entrada  = fila.querySelector('.contador__valor');
-        const botones  = fila.querySelectorAll('.contador__boton');
-        const maxConfigurado = Number(entrada.dataset.maxConfigurado || entrada.max);
-        entrada.dataset.maxConfigurado = maxConfigurado;
-
-        if (stock === null) {
-          etiqueta.hidden = true;
-          entrada.max = maxConfigurado;
-          fila.classList.remove('producto--agotado');
-          entrada.disabled = false;
-          botones.forEach((b) => { b.disabled = false; });
-          return;
-        }
-
-        etiqueta.hidden = false;
-        etiqueta.textContent = stock === 0 ? 'Agotado' : `Quedan ${stock}`;
-
-        const nuevoMax = Math.min(maxConfigurado, stock);
-        entrada.max = nuevoMax;
-        if (Number(entrada.value) > nuevoMax) {
-          entrada.value = String(nuevoMax);
-          actualizarResumen();
-        }
-
-        const agotado = stock === 0;
-        fila.classList.toggle('producto--agotado', agotado);
-        entrada.disabled = agotado;
-        botones.forEach((b) => { b.disabled = agotado; });
+      productosInfo.forEach((info) => {
+        if (info.id in datos.stock) info.stockBase = datos.stock[info.id];
+        if (info.id in datos.ingredientes) info.ingredientes = datos.ingredientes[info.id];
       });
+
+      reconstruirDisponibleBase();
+      recalcularDisponibilidad();
+      actualizarResumen();
     } catch {
       /* Si falla, se reintenta en el siguiente ciclo sin avisar. */
     }

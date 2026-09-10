@@ -84,7 +84,8 @@ $abierto = dentroDeHorario();
               $agotado = $stock === 0;
             ?>
               <li class="producto<?= $agotado ? ' producto--agotado' : '' ?>" data-precio="<?= e((string) $p['precio']) ?>"
-                  data-producto-id="<?= (int) $p['id'] ?>" data-stock="<?= $stock === null ? '' : $stock ?>">
+                  data-producto-id="<?= (int) $p['id'] ?>" data-stock="<?= $stock === null ? '' : $stock ?>"
+                  data-ingredientes="<?= e(json_encode($p['ingredientes'])) ?>">
                 <?php if ($p['icono']): ?>
                   <img class="producto__icono" src="assets/img/productos/<?= e($p['icono']) ?>?v=<?= versionIconos() ?>" alt="" loading="lazy">
                 <?php endif; ?>
