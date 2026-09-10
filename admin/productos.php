@@ -43,6 +43,30 @@ exigirAdmin();
 <main class="panel panel--estrecho">
 
   <section class="tarjeta">
+    <h2 class="tarjeta__titulo">Catálogo</h2>
+    <p class="tarjeta__ayuda">
+      Los productos desactivados no aparecen en la web de los alumnos, pero se
+      conservan en los pedidos ya hechos.
+    </p>
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th><span class="visualmente-oculto">Icono</span></th>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th class="tabla__derecha">Precio</th>
+            <th class="tabla__derecha">Stock</th>
+            <th>Visible</th>
+            <th><span class="visualmente-oculto">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody id="tablaProductos"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="tarjeta">
     <h2 class="tarjeta__titulo">Añadir producto</h2>
     <form class="formulario-linea" id="formularioProducto">
       <div class="campo">
@@ -83,30 +107,6 @@ exigirAdmin();
     </div>
 
     <p class="campo__error" id="errorProducto" hidden></p>
-  </section>
-
-  <section class="tarjeta">
-    <h2 class="tarjeta__titulo">Catálogo</h2>
-    <p class="tarjeta__ayuda">
-      Los productos desactivados no aparecen en la web de los alumnos, pero se
-      conservan en los pedidos ya hechos.
-    </p>
-    <div class="tabla-envoltorio">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th><span class="visualmente-oculto">Icono</span></th>
-            <th>Producto</th>
-            <th>Categoría</th>
-            <th class="tabla__derecha">Precio</th>
-            <th class="tabla__derecha">Stock</th>
-            <th>Visible</th>
-            <th><span class="visualmente-oculto">Acciones</span></th>
-          </tr>
-        </thead>
-        <tbody id="tablaProductos"></tbody>
-      </table>
-    </div>
   </section>
 
 </main>
