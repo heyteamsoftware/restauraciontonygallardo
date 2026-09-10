@@ -14,11 +14,39 @@ CREATE TABLE IF NOT EXISTS productos (
   nombre       VARCHAR(100)  NOT NULL,
   categoria    VARCHAR(50)   NOT NULL,
   precio       DECIMAL(5,2)  NOT NULL DEFAULT 0.00,
+  stock        INT           NULL, -- NULL = sin límite (stock ilimitado)
   icono        VARCHAR(60)   NULL,
   activo       TINYINT(1)    NOT NULL DEFAULT 1,
   orden        INT           NOT NULL DEFAULT 0,
   creado_en    DATETIME      NOT NULL,
   INDEX idx_productos_activo (activo, categoria, orden)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  Ingredientes (pestaña "Stock"): pan, embutidos, etc. No se venden
+--  directamente, pero limitan cuántos productos se pueden preparar.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ingredientes (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  nombre       VARCHAR(100)  NOT NULL,
+  stock        INT           NULL, -- NULL = sin límite
+  creado_en    DATETIME      NOT NULL,
+  UNIQUE KEY uq_ingredientes_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  Receta de cada producto: qué ingredientes usa y cuántas unidades de
+--  cada uno por unidad vendida (p. ej. Bocadillo de lomo = 1 Pan de
+--  bocadillo + 2 Lomo). Un producto sin filas aquí no usa ingredientes;
+--  su stock es directamente productos.stock.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS producto_ingredientes (
+  producto_id     INT NOT NULL,
+  ingrediente_id  INT NOT NULL,
+  cantidad        INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (producto_id, ingrediente_id),
+  CONSTRAINT fk_pi_producto    FOREIGN KEY (producto_id)    REFERENCES productos(id)    ON DELETE CASCADE,
+  CONSTRAINT fk_pi_ingrediente FOREIGN KEY (ingrediente_id) REFERENCES ingredientes(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
@@ -28,6 +56,7 @@ CREATE TABLE IF NOT EXISTS productos (
 CREATE TABLE IF NOT EXISTS pedidos (
   id             INT AUTO_INCREMENT PRIMARY KEY,
   codigo         VARCHAR(12)   NOT NULL,
+  dni            VARCHAR(9)    NOT NULL,
   nombre         VARCHAR(120)  NOT NULL,
   email          VARCHAR(150)  NOT NULL,
   estado         ENUM('pendiente','en_curso','completado','archivado','cancelado')
@@ -37,11 +66,13 @@ CREATE TABLE IF NOT EXISTS pedidos (
   aviso_enviado  TINYINT(1)    NOT NULL DEFAULT 0,
   registrado_hoja TINYINT(1)   NOT NULL DEFAULT 0,
   fue_completado TINYINT(1)    NOT NULL DEFAULT 0,
+  stock_repuesto TINYINT(1)    NOT NULL DEFAULT 0, -- 1 si se canceló y ya se devolvió el stock
   creado_en      DATETIME      NOT NULL,
   actualizado_en DATETIME      NOT NULL,
   UNIQUE KEY uq_pedidos_codigo (codigo),
   INDEX idx_pedidos_estado (estado, creado_en),
-  INDEX idx_pedidos_fecha (creado_en)
+  INDEX idx_pedidos_fecha (creado_en),
+  INDEX idx_pedidos_dni (dni)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------

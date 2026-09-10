@@ -18,6 +18,7 @@
   const VERSION = typeof VERSION_ICONOS !== 'undefined' ? `?v=${VERSION_ICONOS}` : '';
 
   let catalogoIconos = [];
+  let catalogoIngredientes = [];
 
   const euros = (n) => Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
@@ -92,6 +93,63 @@
   iniciarSelectorIconos(selectorAlta);
   iniciarSelectorIconos(selectorEditar);
 
+  /* ---------- Receta (ingredientes que usa el producto) ----------
+     Un mismo componente para el alta y la edición: una lista de filas
+     {ingrediente, cantidad} que el propio usuario va añadiendo. */
+
+  async function cargarIngredientes() {
+    try {
+      const respuesta = await fetch('../api/ingredientes.php', { headers: { Accept: 'application/json' } });
+      const datos = await respuesta.json();
+      catalogoIngredientes = datos.ok ? datos.ingredientes : [];
+    } catch {
+      catalogoIngredientes = [];
+    }
+  }
+
+  function filaReceta(ingredienteIdSeleccionado, cantidad) {
+    const fila = document.createElement('div');
+    fila.className = 'receta__fila';
+    fila.innerHTML = `
+      <select class="receta__ingrediente">
+        ${catalogoIngredientes.map((i) => `
+          <option value="${i.id}" ${i.id === ingredienteIdSeleccionado ? 'selected' : ''}>${escapar(i.nombre)}</option>
+        `).join('')}
+      </select>
+      <input type="number" class="receta__cantidad" min="1" step="1" value="${cantidad || 1}" aria-label="Cantidad">
+      <button type="button" class="receta__quitar" aria-label="Quitar ingrediente">✕</button>
+    `;
+    fila.querySelector('.receta__quitar').addEventListener('click', () => fila.remove());
+    return fila;
+  }
+
+  function pintarReceta(contenedor, filas) {
+    contenedor.innerHTML = '';
+    if (!catalogoIngredientes.length) {
+      contenedor.innerHTML = '<p class="campo__ayuda">Todavía no hay ingredientes creados en <a href="stock.php">Stock</a>.</p>';
+      return;
+    }
+    (filas || []).forEach((f) => contenedor.appendChild(filaReceta(f.ingrediente_id, f.cantidad)));
+  }
+
+  function añadirFilaReceta(contenedor) {
+    if (!catalogoIngredientes.length) return;
+    contenedor.querySelector('.campo__ayuda')?.remove();
+    contenedor.appendChild(filaReceta(catalogoIngredientes[0].id, 1));
+  }
+
+  function leerReceta(contenedor) {
+    return [...contenedor.querySelectorAll('.receta__fila')].map((fila) => ({
+      ingrediente_id: Number(fila.querySelector('.receta__ingrediente').value),
+      cantidad: Number(fila.querySelector('.receta__cantidad').value) || 1,
+    }));
+  }
+
+  const recetaAlta    = document.getElementById('recetaAlta');
+  const recetaEditar  = document.getElementById('recetaEditar');
+  document.getElementById('botonAñadirIngredienteAlta').addEventListener('click', () => añadirFilaReceta(recetaAlta));
+  document.getElementById('botonAñadirIngredienteEditar').addEventListener('click', () => añadirFilaReceta(recetaEditar));
+
   /* ---------- Listado ---------- */
 
   async function cargar() {
@@ -114,11 +172,20 @@
         ? `<img class="tabla__icono" src="${RUTA_ICONOS}${escapar(producto.icono)}${VERSION}" alt="">`
         : '<span class="tabla__icono tabla__icono--vacio" aria-hidden="true">—</span>';
 
+      const tieneReceta = producto.ingredientes && producto.ingredientes.length > 0;
+      const stockTexto = (producto.stock === null
+        ? '<span class="tabla__stock-ilimitado">Ilimitado</span>'
+        : (producto.stock === 0
+          ? '<span class="tabla__stock-agotado">Agotado</span>'
+          : String(producto.stock))
+      ) + (tieneReceta ? ' <span class="tabla__stock-ilimitado">(receta)</span>' : '');
+
       fila.innerHTML = `
         <td>${miniatura}</td>
         <td>${escapar(producto.nombre)}</td>
         <td>${escapar(producto.categoria)}</td>
         <td class="tabla__derecha">${euros(producto.precio)}</td>
+        <td class="tabla__derecha">${stockTexto}</td>
         <td>
           <label class="interruptor">
             <input type="checkbox" data-accion="activar" ${producto.activo ? 'checked' : ''}>
@@ -134,12 +201,24 @@
       fila.dataset.nombre = producto.nombre;
       fila.dataset.categoria = producto.categoria;
       fila.dataset.precio = producto.precio;
+      fila.dataset.stock = producto.stock_propio === null ? '' : producto.stock_propio;
       fila.dataset.icono = producto.icono || '';
+      fila.dataset.ingredientes = JSON.stringify(producto.ingredientes || []);
       cuerpoTabla.appendChild(fila);
     });
 
-    // Sugerencias de categoría en los formularios.
-    const categorias = [...new Set(datos.productos.map((p) => p.categoria))];
+    // Sugerencias de categoría en los formularios: las que ya están en uso
+    // más una batería de categorías habituales, por si aún no hay ningún
+    // producto de ese tipo.
+    const categoriasSugeridas = [
+      'Bocatas', 'Croasants', 'Sandwiches', 'Bebidas frías', 'Bebidas calientes',
+      'Zumos y batidos', 'Dulces y bollería', 'Snacks y aperitivos', 'Fruta',
+      'Menú del día', 'Ensaladas', 'Postres', 'Helados',
+    ];
+    const categorias = [...new Set([
+      ...datos.productos.map((p) => p.categoria),
+      ...categoriasSugeridas,
+    ])];
     listaCategorias.innerHTML = categorias
       .map((c) => `<option value="${escapar(c)}">`)
       .join('');
@@ -150,12 +229,16 @@
   formulario.addEventListener('submit', async (evento) => {
     evento.preventDefault();
 
+    const stockValor = document.getElementById('stockProducto').value.trim();
+
     const resultado = await enviar({
-      accion:    'crear',
-      nombre:    document.getElementById('nombreProducto').value.trim(),
-      categoria: document.getElementById('categoriaProducto').value.trim(),
-      precio:    Number(document.getElementById('precioProducto').value),
-      icono:     selectorAlta.dataset.valor || '',
+      accion:       'crear',
+      nombre:       document.getElementById('nombreProducto').value.trim(),
+      categoria:    document.getElementById('categoriaProducto').value.trim(),
+      precio:       Number(document.getElementById('precioProducto').value),
+      stock:        stockValor === '' ? null : Number(stockValor),
+      icono:        selectorAlta.dataset.valor || '',
+      ingredientes: leerReceta(recetaAlta),
     });
 
     if (resultado?.error) {
@@ -167,6 +250,7 @@
     formulario.reset();
     document.getElementById('precioProducto').value = '0.00';
     pintarSelectorIconos(selectorAlta, '');
+    pintarReceta(recetaAlta, []);
     document.getElementById('nombreProducto').focus();
     cargar();
   });
@@ -221,7 +305,9 @@
     document.getElementById('editarNombre').value = fila.dataset.nombre;
     document.getElementById('editarCategoria').value = fila.dataset.categoria;
     document.getElementById('editarPrecio').value = fila.dataset.precio;
+    document.getElementById('editarStock').value = fila.dataset.stock;
     pintarSelectorIconos(selectorEditar, fila.dataset.icono);
+    pintarReceta(recetaEditar, JSON.parse(fila.dataset.ingredientes || '[]'));
     mostrarError(errorEditar, '');
 
     if (typeof dialogoEditar.showModal === 'function') {
@@ -247,13 +333,17 @@
     const boton = document.getElementById('botonGuardarEditar');
     boton.disabled = true;
 
+    const stockValor = document.getElementById('editarStock').value.trim();
+
     const resultado = await enviar({
-      accion:    'editar',
-      id:        Number(document.getElementById('editarId').value),
-      nombre:    document.getElementById('editarNombre').value.trim(),
-      categoria: document.getElementById('editarCategoria').value.trim(),
-      precio:    Number(document.getElementById('editarPrecio').value),
-      icono:     selectorEditar.dataset.valor || '',
+      accion:       'editar',
+      id:           Number(document.getElementById('editarId').value),
+      nombre:       document.getElementById('editarNombre').value.trim(),
+      categoria:    document.getElementById('editarCategoria').value.trim(),
+      precio:       Number(document.getElementById('editarPrecio').value),
+      stock:        stockValor === '' ? null : Number(stockValor),
+      icono:        selectorEditar.dataset.valor || '',
+      ingredientes: leerReceta(recetaEditar),
     });
 
     boton.disabled = false;
@@ -267,7 +357,11 @@
     cargar();
   });
 
-  cargar();
+  (async () => {
+    await cargarIngredientes();
+    pintarReceta(recetaAlta, []);
+    cargar();
+  })();
 
   /* ---------- Indicador de conexión ---------- */
   if (window.ConexionIndicador) {

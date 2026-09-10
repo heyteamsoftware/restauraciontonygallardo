@@ -120,6 +120,23 @@ function analiticaObtenerMetricas(string $rango): array
         'ticket_medio' => (float) $filaResumen['ticket_medio'],
     ];
 
+    // ---------- Por canal: venta en mostrador (sin DNI) vs online ----------
+    $consulta = $pdo->prepare(
+        "SELECT CASE WHEN pe.dni = '' THEN 'mostrador' ELSE 'online' END AS canal,
+                COUNT(*) AS pedidos, COALESCE(SUM(total), 0) AS importe
+           FROM pedidos pe
+          WHERE pe.estado IN ($marcadoresEstado) $condicionFecha
+       GROUP BY canal"
+    );
+    $consulta->execute($parametrosBase);
+    $porCanal = ['online' => ['pedidos' => 0, 'importe' => 0.0], 'mostrador' => ['pedidos' => 0, 'importe' => 0.0]];
+    foreach ($consulta->fetchAll() as $fila) {
+        $porCanal[$fila['canal']] = [
+            'pedidos' => (int) $fila['pedidos'],
+            'importe' => (float) $fila['importe'],
+        ];
+    }
+
     // ---------- Ranking de productos ----------
     $consulta = $pdo->prepare(
         "SELECT pl.nombre_producto, COALESCE(p.categoria, 'Sin categoría') AS categoria,
@@ -217,6 +234,7 @@ function analiticaObtenerMetricas(string $rango): array
     return [
         'rango'          => $rango,
         'resumen'        => $resumen,
+        'por_canal'      => $porCanal,
         'productos'      => $productos,
         'categorias'     => $categorias,
         'por_dia'        => $porDia,

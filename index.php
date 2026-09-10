@@ -9,12 +9,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/arranque.php';
 require_once __DIR__ . '/includes/iconos_productos.php';
 
-$productos = bd()->query(
-    'SELECT id, nombre, categoria, precio, icono
-       FROM productos
-      WHERE activo = 1
-      ORDER BY orden, id'
-)->fetchAll();
+$productos = catalogoConStock();
 
 // Se agrupan por categoría para pintarlas en bloques.
 $porCategoria = [];
@@ -56,6 +51,7 @@ $abierto = dentroDeHorario();
   <section class="confirmacion" id="confirmacion" hidden aria-live="polite">
     <div class="confirmacion__icono" aria-hidden="true">✓</div>
     <h1 class="confirmacion__titulo">¡Pedido recibido!</h1>
+    <p class="confirmacion__nombre" id="confirmacionNombre"></p>
     <p>Enseña este código en la barra cuando te avisemos:</p>
     <p class="confirmacion__codigo" id="codigoPedido"></p>
     <p class="confirmacion__texto" id="confirmacionTexto"></p>
@@ -82,24 +78,32 @@ $abierto = dentroDeHorario();
         <?php foreach ($porCategoria as $categoria => $lista): ?>
           <h2 class="categoria"><?= e($categoria) ?></h2>
           <ul class="productos">
-            <?php foreach ($lista as $p): ?>
-              <li class="producto" data-precio="<?= e((string) $p['precio']) ?>">
+            <?php foreach ($lista as $p):
+              $stock = $p['stock'] !== null ? (int) $p['stock'] : null;
+              $max   = $stock !== null ? min((int) $CONFIG['app']['max_por_producto'], $stock) : (int) $CONFIG['app']['max_por_producto'];
+              $agotado = $stock === 0;
+            ?>
+              <li class="producto<?= $agotado ? ' producto--agotado' : '' ?>" data-precio="<?= e((string) $p['precio']) ?>"
+                  data-producto-id="<?= (int) $p['id'] ?>" data-stock="<?= $stock === null ? '' : $stock ?>">
                 <?php if ($p['icono']): ?>
                   <img class="producto__icono" src="assets/img/productos/<?= e($p['icono']) ?>?v=<?= versionIconos() ?>" alt="" loading="lazy">
                 <?php endif; ?>
                 <div class="producto__info">
                   <span class="producto__nombre"><?= e($p['nombre']) ?></span>
                   <span class="producto__precio"><?= number_format((float) $p['precio'], 2, ',', '.') ?> €</span>
+                  <span class="producto__stock" <?= $stock === null ? 'hidden' : '' ?>>
+                    <?= $agotado ? 'Agotado' : 'Quedan ' . $stock ?>
+                  </span>
                 </div>
                 <div class="contador" data-producto="<?= (int) $p['id'] ?>">
                   <button type="button" class="contador__boton" data-accion="restar"
-                          aria-label="Quitar una unidad de <?= e($p['nombre']) ?>">−</button>
+                          aria-label="Quitar una unidad de <?= e($p['nombre']) ?>" <?= $agotado ? 'disabled' : '' ?>>−</button>
                   <input class="contador__valor" type="number" inputmode="numeric"
                          name="producto_<?= (int) $p['id'] ?>" value="0"
-                         min="0" max="<?= (int) $CONFIG['app']['max_por_producto'] ?>"
+                         min="0" max="<?= $max ?>" <?= $agotado ? 'disabled' : '' ?>
                          aria-label="Unidades de <?= e($p['nombre']) ?>">
                   <button type="button" class="contador__boton" data-accion="sumar"
-                          aria-label="Añadir una unidad de <?= e($p['nombre']) ?>">+</button>
+                          aria-label="Añadir una unidad de <?= e($p['nombre']) ?>" <?= $agotado ? 'disabled' : '' ?>>+</button>
                 </div>
               </li>
             <?php endforeach; ?>
@@ -123,12 +127,17 @@ $abierto = dentroDeHorario();
       <section class="paso" id="paso2" data-paso="2" hidden>
         <button class="enlace-volver" type="button" id="botonVolver">← Volver a los productos</button>
 
+        <p class="aviso aviso--info">
+          Pedidos online solo permitidos para alumnado y personal del CIFP Tony Gallardo.
+        </p>
+
         <div class="resumen-pedido" id="resumenPedido"></div>
 
         <div class="campo">
-          <label for="nombre">Nombre y apellidos <span class="campo__obligatorio">(obligatorio)</span></label>
-          <input type="text" id="nombre" name="nombre" autocomplete="name" maxlength="120" required>
-          <p class="campo__error" id="error-nombre" hidden></p>
+          <label for="dni">DNI/NIE (con letra) <span class="campo__obligatorio">(obligatorio)</span></label>
+          <input type="text" id="dni" name="dni" autocomplete="off" maxlength="9"
+                 placeholder="12345678A" required>
+          <p class="campo__error" id="error-dni" hidden></p>
         </div>
 
         <div class="campo">
@@ -175,7 +184,7 @@ $abierto = dentroDeHorario();
       <ul>
         <li><strong>Responsable:</strong> CIFP Tony Gallardo.</li>
         <li><strong>Contacto:</strong> Ctra. de las Coloradas, 35009 Las Palmas de Gran Canaria · Tel. +34 928 79 62 92.</li>
-        <li><strong>Finalidad:</strong> Gestionar la comanda del pedido e identificarlo (mediante nombre o apodo) y, opcionalmente, enviar la confirmación/estado por correo electrónico.</li>
+        <li><strong>Finalidad:</strong> Comprobar que quien pide es alumnado o personal del centro, gestionar la comanda y, opcionalmente, enviar la confirmación/estado por correo electrónico.</li>
         <li><strong>Legitimación:</strong> Ejecución de la solicitud de pedido y consentimiento del usuario al facilitar el correo opcional.</li>
         <li><strong>Conservación:</strong> Los datos se guardan de forma temporal durante el curso escolar, con fines de gestión y estadística de la cafetería, y se eliminan o anonimizan al finalizar el curso.</li>
         <li><strong>Derechos:</strong> Puedes solicitar la supresión o acceso a tus datos escribiendo a <a href="mailto:secretaria@iestonygallardo.com">secretaria@iestonygallardo.com</a>.</li>
@@ -192,15 +201,15 @@ $abierto = dentroDeHorario();
       </ul>
 
       <h4>2. Datos personales recabados</h4>
-      <p>Para el uso del servicio de pedidos de la aplicación, únicamente se solicitan los siguientes datos:</p>
+      <p>El servicio de pedidos está reservado al alumnado y personal del CIFP Tony Gallardo. Para comprobarlo y gestionar el pedido, se solicitan los siguientes datos:</p>
       <ul>
-        <li><strong>Nombre o pseudónimo (obligatorio):</strong> no requiere verificación de identidad real. Se utiliza exclusivamente para identificar el pedido al momento de la entrega o recogida.</li>
+        <li><strong>DNI/NIE (obligatorio):</strong> se utiliza para verificar que quien pide pertenece al centro (contrastándolo con el listado interno de matrícula/personal) y para identificar el pedido al momento de la entrega o recogida, mostrando el nombre y apellido asociados.</li>
         <li><strong>Correo electrónico (opcional):</strong> se solicita únicamente si el usuario desea recibir notificaciones o confirmaciones sobre el estado de su pedido.</li>
       </ul>
 
       <h4>3. Finalidad y base jurídica del tratamiento</h4>
       <ul>
-        <li><strong>Gestión operativa del pedido (nombre/alias):</strong> la base legal es la prestación del servicio solicitado por el usuario (art. 6.1.b del RGPD).</li>
+        <li><strong>Verificación de la condición de alumno/personal y gestión del pedido (DNI/NIE):</strong> la base legal es la prestación del servicio solicitado por el usuario (art. 6.1.b del RGPD).</li>
         <li><strong>Envío de notificaciones (correo opcional):</strong> la base legal es el consentimiento explícito brindado por el usuario al introducir voluntariamente su dirección de correo electrónico (art. 6.1.a del RGPD).</li>
       </ul>
 

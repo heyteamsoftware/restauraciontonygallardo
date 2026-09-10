@@ -3,14 +3,24 @@
  * Gestión del catálogo desde el panel.
  *
  *   GET  api/productos.php                       → lista completa
- *   POST api/productos.php  { accion: "crear",    nombre, categoria, precio, icono, csrf }
- *   POST api/productos.php  { accion: "editar",   id, nombre, categoria, precio, icono, csrf }
+ *   POST api/productos.php  { accion: "crear",    nombre, categoria, precio, stock, icono, ingredientes, csrf }
+ *   POST api/productos.php  { accion: "editar",   id, nombre, categoria, precio, stock, icono, ingredientes, csrf }
  *   POST api/productos.php  { accion: "activar",  id, activo, csrf }
  *   POST api/productos.php  { accion: "eliminar", id, csrf }
  *
  * icono es opcional: el nombre de archivo de assets/img/productos/, o null
  * para no mostrar ninguno. Debe ser uno de los del catálogo de
  * includes/iconos_productos.php — cualquier otro valor se rechaza.
+ *
+ * stock es opcional: un entero >= 0 con las unidades disponibles, o null
+ * para stock ilimitado (sin control). Solo se usa si el producto NO tiene
+ * ingredientes asignados; si los tiene, el stock se calcula solo a partir
+ * de ellos (ver includes/arranque.php:catalogoConStock()).
+ *
+ * ingredientes es opcional: [{ ingrediente_id, cantidad }, ...]. Sustituye
+ * por completo la receta del producto (borra y vuelve a insertar). Cada
+ * unidad vendida descuenta "cantidad" unidades de cada ingrediente de la
+ * lista (ver includes/arranque.php:descontarStock()).
  *
  * Un producto que ya aparece en algún pedido no se borra: se desactiva, para
  * no perder el histórico.
@@ -27,21 +37,7 @@ exigirAdmin(esApi: true);
 //  Lectura
 // ---------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $productos = bd()->query(
-        'SELECT id, nombre, categoria, precio, icono, activo, orden
-           FROM productos ORDER BY orden, id'
-    )->fetchAll();
-
-    foreach ($productos as &$producto) {
-        $producto['id']     = (int) $producto['id'];
-        $producto['precio'] = (float) $producto['precio'];
-        $producto['icono']  = $producto['icono'] ?: null;
-        $producto['activo'] = (bool) $producto['activo'];
-        $producto['orden']  = (int) $producto['orden'];
-    }
-    unset($producto);
-
-    json(['ok' => true, 'productos' => $productos, 'iconos' => iconosProductosDisponibles()]);
+    json(['ok' => true, 'productos' => catalogoConStock(soloActivos: false), 'iconos' => iconosProductosDisponibles()]);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -69,6 +65,45 @@ switch ($accion) {
         $icono     = trim((string) ($datos['icono'] ?? ''));
         $icono     = $icono !== '' ? $icono : null;
 
+        // Stock: cadena vacía o ausente = ilimitado (null). Si viene, debe
+        // ser un entero >= 0. Se ignora si el producto tiene ingredientes.
+        $stockCrudo = $datos['stock'] ?? null;
+        $stockValido = true;
+        $stock = null;
+        if ($stockCrudo !== null && $stockCrudo !== '') {
+            if (!is_numeric($stockCrudo) || (int) $stockCrudo != $stockCrudo || (int) $stockCrudo < 0) {
+                $stockValido = false;
+            } else {
+                $stock = (int) $stockCrudo;
+            }
+        }
+
+        // Receta: lista de { ingrediente_id, cantidad }. Se valida que cada
+        // ingrediente exista y que la cantidad sea un entero >= 1.
+        $ingredientesCrudos = is_array($datos['ingredientes'] ?? null) ? $datos['ingredientes'] : [];
+        $receta = [];
+        $ingredientesValidos = true;
+        foreach ($ingredientesCrudos as $item) {
+            $ingredienteId = (int) ($item['ingrediente_id'] ?? 0);
+            $cantidad      = (int) ($item['cantidad'] ?? 0);
+            if ($ingredienteId <= 0 || $cantidad < 1) {
+                $ingredientesValidos = false;
+                break;
+            }
+            $receta[$ingredienteId] = $cantidad; // por id: si se repite, se queda la última
+        }
+        if ($receta) {
+            $marcadores = implode(',', array_fill(0, count($receta), '?'));
+            $existentes = bd()->prepare("SELECT COUNT(*) FROM ingredientes WHERE id IN ($marcadores)");
+            $existentes->execute(array_keys($receta));
+            if ((int) $existentes->fetchColumn() !== count($receta)) {
+                $ingredientesValidos = false;
+            }
+        }
+        if ($receta) {
+            $stock = null; // el stock lo determinan los ingredientes
+        }
+
         $errores = [];
         if (mb_strlen($nombre) < 2 || mb_strlen($nombre) > 100) {
             $errores['nombre'] = 'El nombre debe tener entre 2 y 100 caracteres.';
@@ -79,6 +114,12 @@ switch ($accion) {
         if ($precio < 0 || $precio > 999.99) {
             $errores['precio'] = 'El precio no es válido.';
         }
+        if (!$stockValido) {
+            $errores['stock'] = 'El stock debe ser un número entero de 0 o más (o dejarlo en blanco para ilimitado).';
+        }
+        if (!$ingredientesValidos) {
+            $errores['ingredientes'] = 'Revisa la lista de ingredientes: alguno no existe o tiene una cantidad inválida.';
+        }
         if (!iconoProductoValido($icono)) {
             $errores['icono'] = 'Ese icono no existe. Elige uno de la lista.';
         }
@@ -86,24 +127,39 @@ switch ($accion) {
             json(['ok' => false, 'errores' => $errores], 422);
         }
 
+        $pdo = bd();
+        $pdo->beginTransaction();
+
         if ($accion === 'crear') {
-            $siguienteOrden = (int) bd()->query('SELECT COALESCE(MAX(orden), 0) + 1 FROM productos')->fetchColumn();
-            bd()->prepare(
-                'INSERT INTO productos (nombre, categoria, precio, icono, activo, orden, creado_en)
-                 VALUES (?, ?, ?, ?, 1, ?, NOW())'
-            )->execute([$nombre, $categoria, $precio, $icono, $siguienteOrden]);
-
-            json(['ok' => true, 'id' => (int) bd()->lastInsertId()]);
+            $siguienteOrden = (int) $pdo->query('SELECT COALESCE(MAX(orden), 0) + 1 FROM productos')->fetchColumn();
+            $pdo->prepare(
+                'INSERT INTO productos (nombre, categoria, precio, stock, icono, activo, orden, creado_en)
+                 VALUES (?, ?, ?, ?, ?, 1, ?, NOW())'
+            )->execute([$nombre, $categoria, $precio, $stock, $icono, $siguienteOrden]);
+            $id = (int) $pdo->lastInsertId();
+        } else {
+            $id = (int) ($datos['id'] ?? 0);
+            if ($id <= 0) {
+                $pdo->rollBack();
+                jsonError('Producto no indicado.', 422);
+            }
+            $pdo->prepare('UPDATE productos SET nombre = ?, categoria = ?, precio = ?, stock = ?, icono = ? WHERE id = ?')
+                ->execute([$nombre, $categoria, $precio, $stock, $icono, $id]);
         }
 
-        $id = (int) ($datos['id'] ?? 0);
-        if ($id <= 0) {
-            jsonError('Producto no indicado.', 422);
+        $pdo->prepare('DELETE FROM producto_ingredientes WHERE producto_id = ?')->execute([$id]);
+        if ($receta) {
+            $insertarReceta = $pdo->prepare(
+                'INSERT INTO producto_ingredientes (producto_id, ingrediente_id, cantidad) VALUES (?, ?, ?)'
+            );
+            foreach ($receta as $ingredienteId => $cantidad) {
+                $insertarReceta->execute([$id, $ingredienteId, $cantidad]);
+            }
         }
-        bd()->prepare('UPDATE productos SET nombre = ?, categoria = ?, precio = ?, icono = ? WHERE id = ?')
-            ->execute([$nombre, $categoria, $precio, $icono, $id]);
 
-        json(['ok' => true]);
+        $pdo->commit();
+
+        json(['ok' => true, 'id' => $id]);
 
     case 'activar':
         $id     = (int) ($datos['id'] ?? 0);

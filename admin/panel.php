@@ -30,9 +30,15 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
   <div class="barra__interior">
     <span class="barra__marca">Cafetería · Pedidos</span>
     <nav class="barra__nav">
-      <a class="barra__enlace barra__enlace--activo" href="panel.php">Pedidos</a>
-      <a class="barra__enlace" href="productos.php">Productos</a>
-      <a class="barra__enlace" href="analitica.php">Analítica</a>
+      <div class="barra__grupo barra__grupo--operativa">
+        <a class="barra__enlace barra__enlace--activo" href="panel.php">Pedidos</a>
+        <a class="barra__enlace" href="venta.php">Venta en mostrador</a>
+      </div>
+      <div class="barra__grupo barra__grupo--gestion">
+        <a class="barra__enlace" href="productos.php">Productos</a>
+        <a class="barra__enlace" href="stock.php">Stock</a>
+        <a class="barra__enlace" href="analitica.php">Analítica</a>
+      </div>
       <a class="barra__enlace" href="salir.php">Salir</a>
     </nav>
   </div>
@@ -77,11 +83,11 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
       <div class="columna__lista" id="col-completado"></div>
     </section>
 
-    <section class="columna" data-estado="archivado">
-      <h2 class="columna__titulo">Archivados</h2>
+    <details class="columna columna--archivado" data-estado="archivado" id="columnaArchivado">
+      <summary class="columna__titulo">Archivados <span class="columna__contador" id="cuentaArchivadoColumna">0</span></summary>
       <p class="columna__ayuda">Un pedido completado pasa aquí solo a las 6 horas.</p>
       <div class="columna__lista" id="col-archivado"></div>
-    </section>
+    </details>
   </div>
 
   <p class="panel__vacio" id="mensajeVacio" hidden>Todavía no hay pedidos este día.</p>

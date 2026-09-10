@@ -1,63 +1,46 @@
 <?php
 /**
- * POST api/crear_pedido.php
- * Recibe el pedido del alumno, lo valida y lo guarda.
+ * POST api/crear_pedido_mostrador.php
+ * Crea un pedido manualmente desde el panel de venta en mostrador
+ * (admin/venta.php), para clientes atendidos en persona en la cafetería.
  *
- * Cuerpo (JSON):
- *   { dni, email, notas, lineas: [{ producto_id, cantidad }] }
- *   El DNI/NIE debe pertenecer al listado interno de alumnado/personal.
- *   email es opcional: si se deja en blanco, simplemente no se avisa al
- *   alumno cuando el pedido esté listo.
- * Respuesta:
- *   { ok: true, codigo: "1234A", nombre: "Nombre Apellido", total: 5.5 }
+ * A diferencia de api/crear_pedido.php, aquí no se pide ni valida DNI: el
+ * propio personal de la cafetería ve a la persona delante. El pedido entra
+ * en el flujo normal (pendiente → en_curso → completado) igual que los
+ * hechos desde el móvil.
+ *
+ * Cuerpo (JSON): { nombre, csrf, lineas: [{ producto_id, cantidad }] }
+ * Respuesta: { ok: true, codigo: "1234A", total: 5.5 }
  */
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../includes/arranque.php';
-require_once __DIR__ . '/../includes/personas.php';
+require_once __DIR__ . '/../includes/auth.php';
+
+exigirAdmin(esApi: true);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonError('Método no permitido.', 405);
 }
 
-if (!dentroDeHorario()) {
-    jsonError('Ahora mismo no se admiten pedidos. Consulta el horario de la cafetería.', 409);
-}
-
 $datos = cuerpoJson();
 
+if (!comprobarCsrf($datos['csrf'] ?? null)) {
+    jsonError('Petición no válida. Recarga la página.', 403);
+}
+
+$nombre = trim((string) ($datos['nombre'] ?? ''));
+if ($nombre === '') {
+    $nombre = 'Venta en mostrador';
+}
+if (mb_strlen($nombre) > 120) {
+    $nombre = mb_substr($nombre, 0, 120);
+}
+
 // ---------------------------------------------------------------------
-//  Validación del DNI/NIE
+//  Validación de las líneas (igual que en api/crear_pedido.php)
 // ---------------------------------------------------------------------
 $errores = [];
-
-$dni = normalizarDni((string) ($datos['dni'] ?? ''));
-$persona = $dni !== '' ? personaAutorizada($dni) : null;
-
-if ($dni === '') {
-    $errores['dni'] = 'Escribe tu DNI o NIE.';
-} elseif (!$persona) {
-    $errores['dni'] = 'Pedidos online solo permitidos para alumnado y personal del CIFP Tony Gallardo.';
-}
-
-$nombre = $persona ? nombreCompleto($persona) : '';
-
-// El correo es opcional: solo se valida el formato si se ha rellenado.
-$email = trim((string) ($datos['email'] ?? ''));
-if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 150)) {
-    $errores['email'] = 'Ese correo no parece válido. Corrígelo o déjalo en blanco.';
-}
-
-$notas = trim((string) ($datos['notas'] ?? ''));
-if (mb_strlen($notas) > 255) {
-    $notas = mb_substr($notas, 0, 255);
-}
-
-// ---------------------------------------------------------------------
-//  Validación de las líneas
-//  Los precios se toman SIEMPRE de la base de datos, nunca del navegador.
-// ---------------------------------------------------------------------
 $lineasRecibidas = is_array($datos['lineas'] ?? null) ? $datos['lineas'] : [];
 $maxPorProducto  = (int) $CONFIG['app']['max_por_producto'];
 
@@ -73,7 +56,6 @@ foreach ($lineasRecibidas as $linea) {
         $errores['productos'] = "Máximo $maxPorProducto unidades de cada producto.";
         break;
     }
-    // Si el mismo producto llega repetido, se acumula.
     $cantidades[$id] = ($cantidades[$id] ?? 0) + $cantidad;
 }
 
@@ -121,18 +103,16 @@ $pdo = bd();
 $pdo->beginTransaction();
 
 try {
-    // El código es único; si hubiera coincidencia se reintenta.
     for ($intento = 1; ; $intento++) {
         $codigo = generarCodigo();
         try {
             $insertar = $pdo->prepare(
                 'INSERT INTO pedidos (codigo, dni, nombre, email, estado, total, notas, creado_en, actualizado_en)
-                 VALUES (?, ?, ?, ?, "pendiente", ?, ?, NOW(), NOW())'
+                 VALUES (?, "", ?, "", "pendiente", ?, NULL, NOW(), NOW())'
             );
-            $insertar->execute([$codigo, $dni, $nombre, $email, $total, $notas ?: null]);
+            $insertar->execute([$codigo, $nombre, $total]);
             break;
         } catch (PDOException $e) {
-            // 23000 = clave duplicada. Cualquier otro error se propaga.
             if ($e->getCode() !== '23000' || $intento >= 5) {
                 throw $e;
             }
@@ -164,13 +144,12 @@ try {
     $pdo->commit();
 } catch (Throwable $e) {
     $pdo->rollBack();
-    error_log('Error al guardar el pedido: ' . $e->getMessage());
+    error_log('Error al guardar el pedido de mostrador: ' . $e->getMessage());
     jsonError('No hemos podido guardar el pedido. Inténtalo de nuevo.', 500);
 }
 
 json([
     'ok'     => true,
     'codigo' => $codigo,
-    'nombre' => $nombre,
     'total'  => round($total, 2),
 ]);

@@ -30,9 +30,15 @@ $rangoInicial = analiticaValorCurso(analiticaAnioInicioCursoActual());
     <span class="barra__marca">Cafetería · Analítica</span>
     <span class="indicador-conexion" id="indicadorConexion" aria-live="polite"></span>
     <nav class="barra__nav">
-      <a class="barra__enlace" href="panel.php">Pedidos</a>
-      <a class="barra__enlace" href="productos.php">Productos</a>
-      <a class="barra__enlace barra__enlace--activo" href="analitica.php">Analítica</a>
+      <div class="barra__grupo barra__grupo--operativa">
+        <a class="barra__enlace" href="panel.php">Pedidos</a>
+        <a class="barra__enlace" href="venta.php">Venta en mostrador</a>
+      </div>
+      <div class="barra__grupo barra__grupo--gestion">
+        <a class="barra__enlace" href="productos.php">Productos</a>
+        <a class="barra__enlace" href="stock.php">Stock</a>
+        <a class="barra__enlace barra__enlace--activo" href="analitica.php">Analítica</a>
+      </div>
       <a class="barra__enlace" href="salir.php">Salir</a>
     </nav>
   </div>
@@ -110,6 +116,13 @@ $rangoInicial = analiticaValorCurso(analiticaAnioInicioCursoActual());
         <h2 class="bloque-analitica__titulo">Ventas por día de la semana</h2>
         <div class="grafico-envoltorio">
           <canvas id="graficoDiaSemana"></canvas>
+        </div>
+      </div>
+
+      <div class="bloque-analitica">
+        <h2 class="bloque-analitica__titulo">Mostrador vs. online</h2>
+        <div class="grafico-envoltorio">
+          <canvas id="graficoCanal"></canvas>
         </div>
       </div>
     </section>

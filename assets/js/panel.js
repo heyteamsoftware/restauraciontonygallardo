@@ -29,6 +29,7 @@
   let firma = null;
   let fecha = FECHA_INICIAL;
   let pendientesConocidos = new Set();
+  let idsConocidos = new Set();
   let primeraCarga = true;
   let temporizador = null;
 
@@ -57,9 +58,9 @@
 
   /* ---------- Pintado ---------- */
 
-  function tarjetaPedido(pedido) {
+  function tarjetaPedido(pedido, esNuevo) {
     const articulo = document.createElement('article');
-    articulo.className = `pedido pedido--${pedido.estado}`;
+    articulo.className = `pedido pedido--${pedido.estado}` + (esNuevo ? ' pedido--nuevo' : '');
     articulo.dataset.id = pedido.id;
 
     const lineas = pedido.lineas
@@ -82,6 +83,7 @@
         <span class="pedido__hora">${escapar(pedido.hora)}</span>
       </header>
       <p class="pedido__alumno">${escapar(pedido.nombre)}</p>
+      <p class="pedido__dni">${escapar(pedido.dni)}</p>
       ${pedido.email ? `<p class="pedido__email">${escapar(pedido.email)}</p>` : ''}
       <ul class="pedido__lineas">${lineas}</ul>
       ${notas}
@@ -99,19 +101,23 @@
     const yaCompletado = pedido.fue_completado || pedido.estado === 'completado' || pedido.estado === 'archivado';
     const borrar = yaCompletado
       ? ''
-      : `<button class="boton boton--pequeno boton--texto boton--peligro" data-accion="borrar">Borrar</button>`;
+      : `<button class="boton boton--minusculo boton--texto boton--peligro" data-accion="borrar">Borrar</button>`;
 
     switch (pedido.estado) {
       case 'pendiente':
-        return `<button class="boton boton--pequeno boton--principal" data-estado="en_curso">Empezar</button>
-                <button class="boton boton--pequeno boton--texto" data-estado="cancelado">Cancelar</button>
+        return `<button class="boton boton--principal pedido__accion-principal" data-estado="en_curso">Empezar</button>
+                <button class="boton boton--minusculo boton--texto" data-estado="cancelado">Cancelar</button>
                 ${borrar}`;
       case 'en_curso':
-        return `<button class="boton boton--pequeno boton--principal" data-estado="completado">Listo · avisar</button>
-                <button class="boton boton--pequeno boton--texto" data-estado="pendiente">Volver atrás</button>
+        return `<button class="boton boton--principal pedido__accion-principal" data-estado="completado">Listo · avisar</button>
+                <button class="boton boton--minusculo boton--texto" data-estado="pendiente">Volver atrás</button>
+                ${borrar}`;
+      case 'completado':
+        return `<button class="boton boton--principal pedido__accion-principal" data-estado="archivado">Entregado</button>
+                <button class="boton boton--minusculo boton--texto" data-estado="en_curso">Reabrir</button>
                 ${borrar}`;
       default:
-        return `<button class="boton boton--pequeno boton--texto" data-estado="en_curso">Reabrir</button>
+        return `<button class="boton boton--minusculo boton--texto" data-estado="en_curso">Reabrir</button>
                 ${borrar}`;
     }
   }
@@ -127,13 +133,17 @@
 
     datos.pedidos.forEach((pedido) => {
       const columna = columnas[pedido.estado];
-      if (columna) columna.appendChild(tarjetaPedido(pedido));
+      const esNuevo = !primeraCarga && !idsConocidos.has(pedido.id);
+      if (columna) columna.appendChild(tarjetaPedido(pedido, esNuevo));
     });
+    idsConocidos = new Set(datos.pedidos.map((p) => p.id));
 
     cuentas.pendiente.textContent  = datos.resumen.pendiente;
     cuentas.en_curso.textContent   = datos.resumen.en_curso;
     cuentas.completado.textContent = datos.resumen.completado;
     cuentas.archivado.textContent  = datos.resumen.archivado;
+    const contadorColumna = document.getElementById('cuentaArchivadoColumna');
+    if (contadorColumna) contadorColumna.textContent = datos.resumen.archivado;
 
     mensajeVacio.hidden = datos.pedidos.length > 0;
 

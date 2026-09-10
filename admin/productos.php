@@ -26,9 +26,15 @@ exigirAdmin();
     <span class="barra__marca">Cafetería · Productos</span>
     <span class="indicador-conexion" id="indicadorConexion" aria-live="polite"></span>
     <nav class="barra__nav">
-      <a class="barra__enlace" href="panel.php">Pedidos</a>
-      <a class="barra__enlace barra__enlace--activo" href="productos.php">Productos</a>
-      <a class="barra__enlace" href="analitica.php">Analítica</a>
+      <div class="barra__grupo barra__grupo--operativa">
+        <a class="barra__enlace" href="panel.php">Pedidos</a>
+        <a class="barra__enlace" href="venta.php">Venta en mostrador</a>
+      </div>
+      <div class="barra__grupo barra__grupo--gestion">
+        <a class="barra__enlace barra__enlace--activo" href="productos.php">Productos</a>
+        <a class="barra__enlace" href="stock.php">Stock</a>
+        <a class="barra__enlace" href="analitica.php">Analítica</a>
+      </div>
       <a class="barra__enlace" href="salir.php">Salir</a>
     </nav>
   </div>
@@ -53,12 +59,27 @@ exigirAdmin();
         <label for="precioProducto">Precio (€)</label>
         <input type="number" id="precioProducto" min="0" max="999.99" step="0.05" value="0.00" required>
       </div>
+      <div class="campo campo--corto">
+        <label for="stockProducto">Stock</label>
+        <input type="number" id="stockProducto" min="0" step="1" placeholder="Ilimitado">
+      </div>
       <button class="boton boton--principal" type="submit">Añadir</button>
     </form>
 
     <div class="campo campo--iconos">
       <label>Icono <span class="campo__opcional">(opcional)</span></label>
       <div class="selector-iconos" id="selectorIconosAlta"></div>
+    </div>
+
+    <div class="campo">
+      <label>Ingredientes <span class="campo__opcional">(opcional — si usa alguno, el stock de arriba se ignora)</span></label>
+      <p class="campo__ayuda">
+        Si este producto se prepara con ingredientes limitados (p. ej. 1 pan + 2 lonchas),
+        añádelos aquí: su stock determinará cuántas unidades se pueden vender.
+        Los ingredientes se gestionan en <a href="stock.php">Stock</a>.
+      </p>
+      <div class="receta" id="recetaAlta"></div>
+      <button class="boton boton--pequeno boton--texto" type="button" id="botonAñadirIngredienteAlta">+ Añadir ingrediente</button>
     </div>
 
     <p class="campo__error" id="errorProducto" hidden></p>
@@ -78,6 +99,7 @@ exigirAdmin();
             <th>Producto</th>
             <th>Categoría</th>
             <th class="tabla__derecha">Precio</th>
+            <th class="tabla__derecha">Stock</th>
             <th>Visible</th>
             <th><span class="visualmente-oculto">Acciones</span></th>
           </tr>
@@ -112,10 +134,20 @@ exigirAdmin();
         <label for="editarPrecio">Precio (€)</label>
         <input type="number" id="editarPrecio" min="0" max="999.99" step="0.05" required>
       </div>
+      <div class="campo campo--corto">
+        <label for="editarStock">Stock <span class="campo__opcional">(vacío = ilimitado)</span></label>
+        <input type="number" id="editarStock" min="0" step="1" placeholder="Ilimitado">
+      </div>
 
       <div class="campo campo--iconos">
         <label>Icono <span class="campo__opcional">(opcional)</span></label>
         <div class="selector-iconos" id="selectorIconosEditar"></div>
+      </div>
+
+      <div class="campo">
+        <label>Ingredientes <span class="campo__opcional">(opcional — si usa alguno, el stock de arriba se ignora)</span></label>
+        <div class="receta" id="recetaEditar"></div>
+        <button class="boton boton--pequeno boton--texto" type="button" id="botonAñadirIngredienteEditar">+ Añadir ingrediente</button>
       </div>
 
       <p class="campo__error" id="errorEditar" hidden></p>

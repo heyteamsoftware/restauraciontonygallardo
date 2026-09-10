@@ -34,7 +34,7 @@ if ($id <= 0) {
     jsonError('Pedido no indicado.', 422);
 }
 
-$consulta = bd()->prepare('SELECT estado, fue_completado FROM pedidos WHERE id = ?');
+$consulta = bd()->prepare('SELECT estado, fue_completado, stock_repuesto FROM pedidos WHERE id = ?');
 $consulta->execute([$id]);
 $pedido = $consulta->fetch();
 
@@ -48,6 +48,11 @@ $yaCompletado = $pedido['fue_completado'] || in_array($pedido['estado'], ['compl
 
 if ($yaCompletado) {
     jsonError('Un pedido que ya se ha completado no se puede borrar, para no perder su registro.', 409);
+}
+
+// Se devuelve el stock, salvo que ya se hubiera devuelto al cancelarlo.
+if (!$pedido['stock_repuesto']) {
+    reponerStock(bd(), lineasDelPedido(bd(), $id));
 }
 
 bd()->prepare('DELETE FROM pedidos WHERE id = ?')->execute([$id]);

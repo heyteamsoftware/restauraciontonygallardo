@@ -212,6 +212,32 @@
       },
       options: opcionesBase({ y: { beginAtZero: true } }),
     });
+
+    // Mostrador vs. online
+    const canal = metricas.por_canal || { online: { pedidos: 0, importe: 0 }, mostrador: { pedidos: 0, importe: 0 } };
+    graficos.canal = new Chart(document.getElementById('graficoCanal'), {
+      type: 'doughnut',
+      data: {
+        labels: [`Online (${canal.online.pedidos})`, `Mostrador (${canal.mostrador.pedidos})`],
+        datasets: [{
+          data: [canal.online.importe, canal.mostrador.importe],
+          backgroundColor: ['#1f3d2b', '#c8952f'],
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
+          tooltip: {
+            callbacks: {
+              label: (contexto) => ` ${contexto.label}: ${euros(contexto.parsed)}`,
+            },
+          },
+        },
+      },
+    });
   }
 
   function opcionesBase(escalas, leyenda = false) {

@@ -50,13 +50,31 @@ if ($pedido['estado'] === $estado) {
     json(['ok' => true, 'estado' => $estado, 'aviso' => 'sin_cambios']);
 }
 
+$pdo = bd();
+
+// ---------------------------------------------------------------------
+//  Stock: al cancelar un pedido se devuelven sus unidades; si se reabre
+//  un pedido cancelado, hay que volver a descontarlas (puede que ya no
+//  quede stock suficiente, en cuyo caso se bloquea la reapertura).
+// ---------------------------------------------------------------------
+if ($estado === 'cancelado' && !$pedido['stock_repuesto']) {
+    reponerStock($pdo, lineasDelPedido($pdo, $id));
+    $pdo->prepare('UPDATE pedidos SET stock_repuesto = 1 WHERE id = ?')->execute([$id]);
+} elseif ($pedido['estado'] === 'cancelado' && $pedido['stock_repuesto']) {
+    $errorStock = descontarStock($pdo, lineasDelPedido($pdo, $id));
+    if ($errorStock !== null) {
+        jsonError($errorStock, 409);
+    }
+    $pdo->prepare('UPDATE pedidos SET stock_repuesto = 0 WHERE id = ?')->execute([$id]);
+}
+
 if ($estado === 'completado') {
     // Marca permanente: una vez completado, ya no se puede borrar el
     // pedido nunca, ni aunque se reabra después (ver api/eliminar_pedido.php).
-    bd()->prepare('UPDATE pedidos SET estado = ?, fue_completado = 1, actualizado_en = NOW() WHERE id = ?')
+    $pdo->prepare('UPDATE pedidos SET estado = ?, fue_completado = 1, actualizado_en = NOW() WHERE id = ?')
         ->execute([$estado, $id]);
 } else {
-    bd()->prepare('UPDATE pedidos SET estado = ?, actualizado_en = NOW() WHERE id = ?')
+    $pdo->prepare('UPDATE pedidos SET estado = ?, actualizado_en = NOW() WHERE id = ?')
         ->execute([$estado, $id]);
 }
 

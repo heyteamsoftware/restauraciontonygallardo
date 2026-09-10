@@ -101,6 +101,11 @@
     if (numero === 2) pintarResumenPaso2();
     paso1.hidden = numero !== 1;
     paso2.hidden = numero !== 2;
+    const activo = numero === 1 ? paso1 : paso2;
+    activo.classList.remove('paso--entrando');
+    // Forzar reflow para poder repetir la animación aunque ya la tuviera.
+    void activo.offsetWidth;
+    activo.classList.add('paso--entrando');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -140,8 +145,8 @@
   function validar(datos) {
     let correcto = true;
 
-    if (datos.nombre.length < 3) {
-      mostrarError('nombre', 'Escribe tu nombre y apellidos.');
+    if (!/^[0-9XYZxyz][0-9]{7}[A-Za-z]$/.test(datos.dni)) {
+      mostrarError('dni', 'Escribe un DNI o NIE válido, con letra (p. ej. 12345678A).');
       correcto = false;
     }
     // El correo es opcional: solo se valida el formato si se ha rellenado.
@@ -164,7 +169,7 @@
     limpiarErrores();
 
     const datos = {
-      nombre: document.getElementById('nombre').value.trim(),
+      dni:    document.getElementById('dni').value.trim().toUpperCase(),
       email:  document.getElementById('email').value.trim(),
       notas:  document.getElementById('notas').value.trim(),
       lineas: lineasElegidas().map(({ producto_id, cantidad }) => ({ producto_id, cantidad })),
@@ -198,7 +203,8 @@
         return;
       }
 
-      // Todo bien: se muestra el código de recogida.
+      // Todo bien: se muestra el nombre y el código de recogida.
+      document.getElementById('confirmacionNombre').textContent = resultado.nombre;
       document.getElementById('codigoPedido').textContent = resultado.codigo;
       document.getElementById('confirmacionTexto').textContent = datos.email
         ? `Te avisaremos a ${datos.email} en cuanto esté preparado.`
@@ -224,6 +230,10 @@
     confirmacion.hidden = true;
     bloquePedido.hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // El stock pudo cambiar con el pedido que se acaba de hacer (el propio
+    // y el de cualquier otra persona pidiendo a la vez): se refresca ya,
+    // sin esperar al siguiente ciclo automático.
+    refrescarStock();
   });
 
   actualizarResumen();
@@ -255,4 +265,57 @@
       textoConectado: 'En línea',
     });
   }
+
+  /* ---------- Stock en vivo ----------
+     Se consulta cada pocos segundos para que, si hay varias personas
+     pidiendo a la vez, el número de unidades disponibles (y el máximo que
+     se puede elegir) se mantenga al día sin tener que recargar la página. */
+
+  async function refrescarStock() {
+    try {
+      const respuesta = await fetch('api/stock.php', { headers: { Accept: 'application/json' } });
+      const datos = await respuesta.json();
+      if (!datos.ok) return;
+
+      document.querySelectorAll('.producto[data-producto-id]').forEach((fila) => {
+        const id = fila.dataset.productoId;
+        if (!(id in datos.stock)) return;
+
+        const stock = datos.stock[id]; // number o null (sin límite)
+        const etiqueta = fila.querySelector('.producto__stock');
+        const entrada  = fila.querySelector('.contador__valor');
+        const botones  = fila.querySelectorAll('.contador__boton');
+        const maxConfigurado = Number(entrada.dataset.maxConfigurado || entrada.max);
+        entrada.dataset.maxConfigurado = maxConfigurado;
+
+        if (stock === null) {
+          etiqueta.hidden = true;
+          entrada.max = maxConfigurado;
+          fila.classList.remove('producto--agotado');
+          entrada.disabled = false;
+          botones.forEach((b) => { b.disabled = false; });
+          return;
+        }
+
+        etiqueta.hidden = false;
+        etiqueta.textContent = stock === 0 ? 'Agotado' : `Quedan ${stock}`;
+
+        const nuevoMax = Math.min(maxConfigurado, stock);
+        entrada.max = nuevoMax;
+        if (Number(entrada.value) > nuevoMax) {
+          entrada.value = String(nuevoMax);
+          actualizarResumen();
+        }
+
+        const agotado = stock === 0;
+        fila.classList.toggle('producto--agotado', agotado);
+        entrada.disabled = agotado;
+        botones.forEach((b) => { b.disabled = agotado; });
+      });
+    } catch {
+      /* Si falla, se reintenta en el siguiente ciclo sin avisar. */
+    }
+  }
+
+  setInterval(refrescarStock, 12000);
 })();

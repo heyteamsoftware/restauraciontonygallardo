@@ -1,6 +1,10 @@
 # Configuración con contraseñas: nunca se sube al repositorio.
 includes/config.php
 
+# Listado interno de DNI/NIE autorizados (datos del alumnado y personal):
+# nunca se sube al repositorio ni se hace público.
+includes/personas_autorizadas.php
+
 # Sistema
 .DS_Store
 Thumbs.db
