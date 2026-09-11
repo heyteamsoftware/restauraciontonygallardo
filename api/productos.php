@@ -3,8 +3,8 @@
  * Gestión del catálogo desde el panel.
  *
  *   GET  api/productos.php                       → lista completa
- *   POST api/productos.php  { accion: "crear",    nombre, categoria, precio, stock, icono, ingredientes, csrf }
- *   POST api/productos.php  { accion: "editar",   id, nombre, categoria, precio, stock, icono, ingredientes, csrf }
+ *   POST api/productos.php  { accion: "crear",    nombre, categoria, precio, icono, ingredientes, csrf }
+ *   POST api/productos.php  { accion: "editar",   id, nombre, categoria, precio, icono, ingredientes, csrf }
  *   POST api/productos.php  { accion: "activar",  id, activo, csrf }
  *   POST api/productos.php  { accion: "eliminar", id, csrf }
  *
@@ -12,15 +12,12 @@
  * para no mostrar ninguno. Debe ser uno de los del catálogo de
  * includes/iconos_productos.php — cualquier otro valor se rechaza.
  *
- * stock es opcional: un entero >= 0 con las unidades disponibles, o null
- * para stock ilimitado (sin control). Solo se usa si el producto NO tiene
- * ingredientes asignados; si los tiene, el stock se calcula solo a partir
- * de ellos (ver includes/arranque.php:catalogoConStock()).
- *
- * ingredientes es opcional: [{ ingrediente_id, cantidad }, ...]. Sustituye
- * por completo la receta del producto (borra y vuelve a insertar). Cada
- * unidad vendida descuenta "cantidad" unidades de cada ingrediente de la
- * lista (ver includes/arranque.php:descontarStock()).
+ * ingredientes es obligatorio: [{ ingrediente_id, cantidad }, ...], al menos
+ * uno. Es lo único de donde sale el stock del producto (ver
+ * includes/arranque.php:catalogoConStock()); no existe un stock manual.
+ * Sustituye por completo la receta del producto (borra y vuelve a
+ * insertar). Cada unidad vendida descuenta "cantidad" unidades de cada
+ * ingrediente de la lista (ver includes/arranque.php:descontarStock()).
  *
  * Un producto que ya aparece en algún pedido no se borra: se desactiva, para
  * no perder el histórico.
@@ -65,21 +62,9 @@ switch ($accion) {
         $icono     = trim((string) ($datos['icono'] ?? ''));
         $icono     = $icono !== '' ? $icono : null;
 
-        // Stock: cadena vacía o ausente = ilimitado (null). Si viene, debe
-        // ser un entero >= 0. Se ignora si el producto tiene ingredientes.
-        $stockCrudo = $datos['stock'] ?? null;
-        $stockValido = true;
-        $stock = null;
-        if ($stockCrudo !== null && $stockCrudo !== '') {
-            if (!is_numeric($stockCrudo) || (int) $stockCrudo != $stockCrudo || (int) $stockCrudo < 0) {
-                $stockValido = false;
-            } else {
-                $stock = (int) $stockCrudo;
-            }
-        }
-
-        // Receta: lista de { ingrediente_id, cantidad }. Se valida que cada
-        // ingrediente exista y que la cantidad sea un entero >= 1.
+        // Receta: lista de { ingrediente_id, cantidad }, obligatoria (al
+        // menos una fila). Se valida que cada ingrediente exista y que la
+        // cantidad sea un entero >= 1.
         $ingredientesCrudos = is_array($datos['ingredientes'] ?? null) ? $datos['ingredientes'] : [];
         $receta = [];
         $ingredientesValidos = true;
@@ -92,16 +77,15 @@ switch ($accion) {
             }
             $receta[$ingredienteId] = $cantidad; // por id: si se repite, se queda la última
         }
-        if ($receta) {
+        if (!$receta) {
+            $ingredientesValidos = false;
+        } elseif ($ingredientesValidos) {
             $marcadores = implode(',', array_fill(0, count($receta), '?'));
             $existentes = bd()->prepare("SELECT COUNT(*) FROM ingredientes WHERE id IN ($marcadores)");
             $existentes->execute(array_keys($receta));
             if ((int) $existentes->fetchColumn() !== count($receta)) {
                 $ingredientesValidos = false;
             }
-        }
-        if ($receta) {
-            $stock = null; // el stock lo determinan los ingredientes
         }
 
         $errores = [];
@@ -114,11 +98,8 @@ switch ($accion) {
         if ($precio < 0 || $precio > 999.99) {
             $errores['precio'] = 'El precio no es válido.';
         }
-        if (!$stockValido) {
-            $errores['stock'] = 'El stock debe ser un número entero de 0 o más (o dejarlo en blanco para ilimitado).';
-        }
         if (!$ingredientesValidos) {
-            $errores['ingredientes'] = 'Revisa la lista de ingredientes: alguno no existe o tiene una cantidad inválida.';
+            $errores['ingredientes'] = 'Añade al menos un ingrediente válido: es lo que determina el stock del producto.';
         }
         if (!iconoProductoValido($icono)) {
             $errores['icono'] = 'Ese icono no existe. Elige uno de la lista.';
@@ -134,8 +115,8 @@ switch ($accion) {
             $siguienteOrden = (int) $pdo->query('SELECT COALESCE(MAX(orden), 0) + 1 FROM productos')->fetchColumn();
             $pdo->prepare(
                 'INSERT INTO productos (nombre, categoria, precio, stock, icono, activo, orden, creado_en)
-                 VALUES (?, ?, ?, ?, ?, 1, ?, NOW())'
-            )->execute([$nombre, $categoria, $precio, $stock, $icono, $siguienteOrden]);
+                 VALUES (?, ?, ?, NULL, ?, 1, ?, NOW())'
+            )->execute([$nombre, $categoria, $precio, $icono, $siguienteOrden]);
             $id = (int) $pdo->lastInsertId();
         } else {
             $id = (int) ($datos['id'] ?? 0);
@@ -143,8 +124,8 @@ switch ($accion) {
                 $pdo->rollBack();
                 jsonError('Producto no indicado.', 422);
             }
-            $pdo->prepare('UPDATE productos SET nombre = ?, categoria = ?, precio = ?, stock = ?, icono = ? WHERE id = ?')
-                ->execute([$nombre, $categoria, $precio, $stock, $icono, $id]);
+            $pdo->prepare('UPDATE productos SET nombre = ?, categoria = ?, precio = ?, stock = NULL, icono = ? WHERE id = ?')
+                ->execute([$nombre, $categoria, $precio, $icono, $id]);
         }
 
         $pdo->prepare('DELETE FROM producto_ingredientes WHERE producto_id = ?')->execute([$id]);

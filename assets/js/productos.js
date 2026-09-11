@@ -145,26 +145,8 @@
     }));
   }
 
-  /* El stock de un producto con receta lo determinan sus ingredientes:
-     el campo "Stock" no tiene sentido en ese caso, así que se bloquea en
-     cuanto se añade alguno (y se libera si se quitan todos). */
-  function sincronizarCampoStock(contenedorReceta, inputStock) {
-    const tieneReceta = contenedorReceta.querySelectorAll('.receta__fila').length > 0;
-    inputStock.disabled = tieneReceta;
-    inputStock.placeholder = tieneReceta ? 'Lo determinan los ingredientes' : 'Ilimitado';
-    if (tieneReceta) inputStock.value = '';
-  }
-
-  function observarReceta(contenedorReceta, inputStock) {
-    sincronizarCampoStock(contenedorReceta, inputStock);
-    new MutationObserver(() => sincronizarCampoStock(contenedorReceta, inputStock))
-      .observe(contenedorReceta, { childList: true });
-  }
-
   const recetaAlta    = document.getElementById('recetaAlta');
   const recetaEditar  = document.getElementById('recetaEditar');
-  observarReceta(recetaAlta, document.getElementById('stockProducto'));
-  observarReceta(recetaEditar, document.getElementById('editarStock'));
   document.getElementById('botonAñadirIngredienteAlta').addEventListener('click', () => añadirFilaReceta(recetaAlta));
   document.getElementById('botonAñadirIngredienteEditar').addEventListener('click', () => añadirFilaReceta(recetaEditar));
 
@@ -219,7 +201,6 @@
       fila.dataset.nombre = producto.nombre;
       fila.dataset.categoria = producto.categoria;
       fila.dataset.precio = producto.precio;
-      fila.dataset.stock = producto.stock_propio === null ? '' : producto.stock_propio;
       fila.dataset.icono = producto.icono || '';
       fila.dataset.ingredientes = JSON.stringify(producto.ingredientes || []);
       cuerpoTabla.appendChild(fila);
@@ -247,16 +228,19 @@
   formulario.addEventListener('submit', async (evento) => {
     evento.preventDefault();
 
-    const stockValor = document.getElementById('stockProducto').value.trim();
+    const ingredientes = leerReceta(recetaAlta);
+    if (!ingredientes.length) {
+      mostrarError(errorProducto, 'Añade al menos un ingrediente: es lo que determina cuánto se puede vender.');
+      return;
+    }
 
     const resultado = await enviar({
       accion:       'crear',
       nombre:       document.getElementById('nombreProducto').value.trim(),
       categoria:    document.getElementById('categoriaProducto').value.trim(),
       precio:       Number(document.getElementById('precioProducto').value),
-      stock:        stockValor === '' ? null : Number(stockValor),
       icono:        selectorAlta.dataset.valor || '',
-      ingredientes: leerReceta(recetaAlta),
+      ingredientes,
     });
 
     if (resultado?.error) {
@@ -323,7 +307,6 @@
     document.getElementById('editarNombre').value = fila.dataset.nombre;
     document.getElementById('editarCategoria').value = fila.dataset.categoria;
     document.getElementById('editarPrecio').value = fila.dataset.precio;
-    document.getElementById('editarStock').value = fila.dataset.stock;
     pintarSelectorIconos(selectorEditar, fila.dataset.icono);
     pintarReceta(recetaEditar, JSON.parse(fila.dataset.ingredientes || '[]'));
     mostrarError(errorEditar, '');
@@ -348,10 +331,14 @@
   formularioEditar.addEventListener('submit', async (evento) => {
     evento.preventDefault();
 
+    const ingredientes = leerReceta(recetaEditar);
+    if (!ingredientes.length) {
+      mostrarError(errorEditar, 'Añade al menos un ingrediente: es lo que determina cuánto se puede vender.');
+      return;
+    }
+
     const boton = document.getElementById('botonGuardarEditar');
     boton.disabled = true;
-
-    const stockValor = document.getElementById('editarStock').value.trim();
 
     const resultado = await enviar({
       accion:       'editar',
@@ -359,9 +346,8 @@
       nombre:       document.getElementById('editarNombre').value.trim(),
       categoria:    document.getElementById('editarCategoria').value.trim(),
       precio:       Number(document.getElementById('editarPrecio').value),
-      stock:        stockValor === '' ? null : Number(stockValor),
       icono:        selectorEditar.dataset.valor || '',
-      ingredientes: leerReceta(recetaEditar),
+      ingredientes,
     });
 
     boton.disabled = false;
