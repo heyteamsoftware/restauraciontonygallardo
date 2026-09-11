@@ -145,8 +145,26 @@
     }));
   }
 
+  /* El stock de un producto con receta lo determinan sus ingredientes:
+     el campo "Stock" no tiene sentido en ese caso, así que se bloquea en
+     cuanto se añade alguno (y se libera si se quitan todos). */
+  function sincronizarCampoStock(contenedorReceta, inputStock) {
+    const tieneReceta = contenedorReceta.querySelectorAll('.receta__fila').length > 0;
+    inputStock.disabled = tieneReceta;
+    inputStock.placeholder = tieneReceta ? 'Lo determinan los ingredientes' : 'Ilimitado';
+    if (tieneReceta) inputStock.value = '';
+  }
+
+  function observarReceta(contenedorReceta, inputStock) {
+    sincronizarCampoStock(contenedorReceta, inputStock);
+    new MutationObserver(() => sincronizarCampoStock(contenedorReceta, inputStock))
+      .observe(contenedorReceta, { childList: true });
+  }
+
   const recetaAlta    = document.getElementById('recetaAlta');
   const recetaEditar  = document.getElementById('recetaEditar');
+  observarReceta(recetaAlta, document.getElementById('stockProducto'));
+  observarReceta(recetaEditar, document.getElementById('editarStock'));
   document.getElementById('botonAñadirIngredienteAlta').addEventListener('click', () => añadirFilaReceta(recetaAlta));
   document.getElementById('botonAñadirIngredienteEditar').addEventListener('click', () => añadirFilaReceta(recetaEditar));
 
