@@ -83,7 +83,6 @@
         <span class="pedido__hora">${escapar(pedido.hora)}</span>
       </header>
       <p class="pedido__alumno">${escapar(pedido.nombre)}</p>
-      <p class="pedido__dni">${escapar(pedido.dni)}</p>
       ${pedido.email ? `<p class="pedido__email">${escapar(pedido.email)}</p>` : ''}
       <ul class="pedido__lineas">${lineas}</ul>
       ${notas}

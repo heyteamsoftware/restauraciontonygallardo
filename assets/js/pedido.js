@@ -241,8 +241,8 @@
   function validar(datos) {
     let correcto = true;
 
-    if (!/^[0-9XYZxyz][0-9]{7}[A-Za-z]$/.test(datos.dni)) {
-      mostrarError('dni', 'Escribe un DNI o NIE válido, con letra (p. ej. 12345678A).');
+    if (datos.nombre.length < 3) {
+      mostrarError('nombre', 'Escribe tu nombre y apellidos.');
       correcto = false;
     }
     // El correo es opcional: solo se valida el formato si se ha rellenado.
@@ -265,7 +265,7 @@
     limpiarErrores();
 
     const datos = {
-      dni:    document.getElementById('dni').value.trim().toUpperCase(),
+      nombre: document.getElementById('nombre').value.trim(),
       email:  document.getElementById('email').value.trim(),
       notas:  document.getElementById('notas').value.trim(),
       lineas: lineasElegidas().map(({ producto_id, cantidad }) => ({ producto_id, cantidad })),
@@ -387,5 +387,12 @@
     }
   }
 
-  setInterval(refrescarStock, 12000);
+  setInterval(refrescarStock, 5000);
+
+  // Al volver a esta pestaña (otra persona pudo haber pedido mientras
+  // tanto) se refresca al momento, sin esperar al siguiente ciclo.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refrescarStock();
+  });
+  window.addEventListener('focus', refrescarStock);
 })();

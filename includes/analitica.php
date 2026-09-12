@@ -122,7 +122,7 @@ function analiticaObtenerMetricas(string $rango): array
 
     // ---------- Por canal: venta en mostrador (sin DNI) vs online ----------
     $consulta = $pdo->prepare(
-        "SELECT CASE WHEN pe.dni = '' THEN 'mostrador' ELSE 'online' END AS canal,
+        "SELECT CASE WHEN pe.persona_id = '' THEN 'mostrador' ELSE 'online' END AS canal,
                 COUNT(*) AS pedidos, COALESCE(SUM(total), 0) AS importe
            FROM pedidos pe
           WHERE pe.estado IN ($marcadoresEstado) $condicionFecha

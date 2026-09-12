@@ -4,8 +4,9 @@
  * Recibe el pedido del alumno, lo valida y lo guarda.
  *
  * Cuerpo (JSON):
- *   { dni, email, notas, lineas: [{ producto_id, cantidad }] }
- *   El DNI/NIE debe pertenecer al listado interno de alumnado/personal.
+ *   { nombre, email, notas, lineas: [{ producto_id, cantidad }] }
+ *   nombre es un nombre o apodo libre, sin verificar contra ningún
+ *   listado ni documento de identidad (no se pide ni se guarda DNI/NIE).
  *   email es opcional: si se deja en blanco, simplemente no se avisa al
  *   alumno cuando el pedido esté listo.
  * Respuesta:
@@ -15,7 +16,6 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/arranque.php';
-require_once __DIR__ . '/../includes/personas.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonError('Método no permitido.', 405);
@@ -28,20 +28,14 @@ if (!dentroDeHorario()) {
 $datos = cuerpoJson();
 
 // ---------------------------------------------------------------------
-//  Validación del DNI/NIE
+//  Validación de los datos personales
 // ---------------------------------------------------------------------
 $errores = [];
 
-$dni = normalizarDni((string) ($datos['dni'] ?? ''));
-$persona = $dni !== '' ? personaAutorizada($dni) : null;
-
-if ($dni === '') {
-    $errores['dni'] = 'Escribe tu DNI o NIE.';
-} elseif (!$persona) {
-    $errores['dni'] = 'Pedidos online solo permitidos para alumnado y personal del CIFP Tony Gallardo.';
+$nombre = trim((string) ($datos['nombre'] ?? ''));
+if (mb_strlen($nombre) < 3 || mb_strlen($nombre) > 120) {
+    $errores['nombre'] = 'Escribe tu nombre y apellidos.';
 }
-
-$nombre = $persona ? nombreCompleto($persona) : '';
 
 // El correo es opcional: solo se valida el formato si se ha rellenado.
 $email = trim((string) ($datos['email'] ?? ''));
@@ -126,10 +120,13 @@ try {
         $codigo = generarCodigo();
         try {
             $insertar = $pdo->prepare(
-                'INSERT INTO pedidos (codigo, dni, nombre, email, estado, total, notas, creado_en, actualizado_en)
+                'INSERT INTO pedidos (codigo, persona_id, nombre, email, estado, total, notas, creado_en, actualizado_en)
                  VALUES (?, ?, ?, ?, "pendiente", ?, ?, NOW(), NOW())'
             );
-            $insertar->execute([$codigo, $dni, $nombre, $email, $total, $notas ?: null]);
+            // "web" marca los pedidos hechos desde esta página (frente a "" de
+            // venta en mostrador, ver api/crear_pedido_mostrador.php): solo se
+            // usa para distinguir el canal en Analítica, no identifica a nadie.
+            $insertar->execute([$codigo, 'web', $nombre, $email, $total, $notas ?: null]);
             break;
         } catch (PDOException $e) {
             // 23000 = clave duplicada. Cualquier otro error se propaga.

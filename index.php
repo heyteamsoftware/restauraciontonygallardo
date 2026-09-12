@@ -128,17 +128,12 @@ $abierto = dentroDeHorario();
       <section class="paso" id="paso2" data-paso="2" hidden>
         <button class="enlace-volver" type="button" id="botonVolver">← Volver a los productos</button>
 
-        <p class="aviso aviso--info">
-          Pedidos online solo permitidos para alumnado y personal del CIFP Tony Gallardo.
-        </p>
-
         <div class="resumen-pedido" id="resumenPedido"></div>
 
         <div class="campo">
-          <label for="dni">DNI/NIE (con letra) <span class="campo__obligatorio">(obligatorio)</span></label>
-          <input type="text" id="dni" name="dni" autocomplete="off" maxlength="9"
-                 placeholder="12345678A" required>
-          <p class="campo__error" id="error-dni" hidden></p>
+          <label for="nombre">Nombre y apellidos <span class="campo__obligatorio">(obligatorio)</span></label>
+          <input type="text" id="nombre" name="nombre" autocomplete="name" maxlength="120" required>
+          <p class="campo__error" id="error-nombre" hidden></p>
         </div>
 
         <div class="campo">
@@ -185,7 +180,7 @@ $abierto = dentroDeHorario();
       <ul>
         <li><strong>Responsable:</strong> CIFP Tony Gallardo.</li>
         <li><strong>Contacto:</strong> Ctra. de las Coloradas, 35009 Las Palmas de Gran Canaria · Tel. +34 928 79 62 92.</li>
-        <li><strong>Finalidad:</strong> Comprobar que quien pide es alumnado o personal del centro, gestionar la comanda y, opcionalmente, enviar la confirmación/estado por correo electrónico.</li>
+        <li><strong>Finalidad:</strong> Gestionar la comanda del pedido e identificarlo (mediante nombre o apodo) y, opcionalmente, enviar la confirmación/estado por correo electrónico.</li>
         <li><strong>Legitimación:</strong> Ejecución de la solicitud de pedido y consentimiento del usuario al facilitar el correo opcional.</li>
         <li><strong>Conservación:</strong> Los datos se guardan de forma temporal durante el curso escolar, con fines de gestión y estadística de la cafetería, y se eliminan o anonimizan al finalizar el curso.</li>
         <li><strong>Derechos:</strong> Puedes solicitar la supresión o acceso a tus datos escribiendo a <a href="mailto:secretaria@iestonygallardo.com">secretaria@iestonygallardo.com</a>.</li>
@@ -202,15 +197,15 @@ $abierto = dentroDeHorario();
       </ul>
 
       <h4>2. Datos personales recabados</h4>
-      <p>El servicio de pedidos está reservado al alumnado y personal del CIFP Tony Gallardo. Para comprobarlo y gestionar el pedido, se solicitan los siguientes datos:</p>
+      <p>Para el uso del servicio de pedidos de la aplicación, únicamente se solicitan los siguientes datos:</p>
       <ul>
-        <li><strong>DNI/NIE (obligatorio):</strong> se utiliza para verificar que quien pide pertenece al centro (contrastándolo con el listado interno de matrícula/personal) y para identificar el pedido al momento de la entrega o recogida, mostrando el nombre y apellido asociados.</li>
+        <li><strong>Nombre o pseudónimo (obligatorio):</strong> no requiere verificación de identidad real. Se utiliza exclusivamente para identificar el pedido al momento de la entrega o recogida. <strong>No se solicita ni se guarda ningún documento de identidad (DNI/NIE) en ningún momento del proceso.</strong></li>
         <li><strong>Correo electrónico (opcional):</strong> se solicita únicamente si el usuario desea recibir notificaciones o confirmaciones sobre el estado de su pedido.</li>
       </ul>
 
       <h4>3. Finalidad y base jurídica del tratamiento</h4>
       <ul>
-        <li><strong>Verificación de la condición de alumno/personal y gestión del pedido (DNI/NIE):</strong> la base legal es la prestación del servicio solicitado por el usuario (art. 6.1.b del RGPD).</li>
+        <li><strong>Gestión operativa del pedido (nombre/alias):</strong> la base legal es la prestación del servicio solicitado por el usuario (art. 6.1.b del RGPD).</li>
         <li><strong>Envío de notificaciones (correo opcional):</strong> la base legal es el consentimiento explícito brindado por el usuario al introducir voluntariamente su dirección de correo electrónico (art. 6.1.a del RGPD).</li>
       </ul>
 

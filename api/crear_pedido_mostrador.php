@@ -107,7 +107,7 @@ try {
         $codigo = generarCodigo();
         try {
             $insertar = $pdo->prepare(
-                'INSERT INTO pedidos (codigo, dni, nombre, email, estado, total, notas, creado_en, actualizado_en)
+                'INSERT INTO pedidos (codigo, persona_id, nombre, email, estado, total, notas, creado_en, actualizado_en)
                  VALUES (?, "", ?, "", "pendiente", ?, NULL, NOW(), NOW())'
             );
             $insertar->execute([$codigo, $nombre, $total]);

@@ -1,7 +1,7 @@
 # Configuración con contraseñas: nunca se sube al repositorio.
 includes/config.php
 
-# Listado interno de DNI/NIE autorizados (datos del alumnado y personal):
+# Listado interno de alumnado y personal autorizados a pedir (sin DNI/NIE):
 # nunca se sube al repositorio ni se hace público.
 includes/personas_autorizadas.php
 

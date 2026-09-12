@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS producto_ingredientes (
 CREATE TABLE IF NOT EXISTS pedidos (
   id             INT AUTO_INCREMENT PRIMARY KEY,
   codigo         VARCHAR(12)   NOT NULL,
-  dni            VARCHAR(9)    NOT NULL,
+  persona_id     VARCHAR(20)   NOT NULL, -- ID interno de includes/personas_autorizadas.php; NUNCA un DNI
   nombre         VARCHAR(120)  NOT NULL,
   email          VARCHAR(150)  NOT NULL,
   estado         ENUM('pendiente','en_curso','completado','archivado','cancelado')
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
   UNIQUE KEY uq_pedidos_codigo (codigo),
   INDEX idx_pedidos_estado (estado, creado_en),
   INDEX idx_pedidos_fecha (creado_en),
-  INDEX idx_pedidos_dni (dni)
+  INDEX idx_pedidos_persona (persona_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------

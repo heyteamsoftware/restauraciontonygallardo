@@ -187,7 +187,14 @@
       /* Se reintenta en el siguiente ciclo. */
     }
   }
-  setInterval(refrescarStock, 12000);
+  setInterval(refrescarStock, 5000);
+
+  // Al volver a esta pestaña (otra venta pudo haberse hecho mientras
+  // tanto) se refresca al momento, sin esperar al siguiente ciclo.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refrescarStock();
+  });
+  window.addEventListener('focus', refrescarStock);
 
   /* ---------- Tocar un producto = añadir una unidad ---------- */
 
