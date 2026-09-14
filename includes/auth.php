@@ -1,30 +1,32 @@
 <?php
 /**
  * Autenticación del panel de administración.
- * Un único usuario, definido en config.php mediante un hash de contraseña.
+ * Acceso mediante un código numérico de 4 cifras (PIN), definido en
+ * config.php como un hash. Pensado para que el personal de la cafetería
+ * entre rápido desde una tablet/móvil, sin usuario ni contraseña.
  */
 
 declare(strict_types=1);
 
 require_once __DIR__ . '/arranque.php';
 
-/** Comprueba usuario y contraseña contra los datos de config.php. */
-function credencialesCorrectas(string $usuario, string $password): bool
+/** Comprueba el PIN de 4 cifras contra el hash guardado en config.php. */
+function pinCorrecto(string $pin): bool
 {
     global $CONFIG;
 
-    $usuarioOk = hash_equals($CONFIG['admin']['usuario'], $usuario);
-    $passOk    = password_verify($password, $CONFIG['admin']['hash_pass']);
+    if (!preg_match('/^\d{4}$/', $pin)) {
+        return false;
+    }
 
-    // Se comprueban ambas siempre para no filtrar cuál de las dos falló.
-    return $usuarioOk && $passOk;
+    return password_verify($pin, $CONFIG['admin']['pin_hash']);
 }
 
-function iniciarSesionAdmin(string $usuario): void
+function iniciarSesionAdmin(): void
 {
     iniciarSesion();
     session_regenerate_id(true);          // evita fijación de sesión
-    $_SESSION['admin'] = $usuario;
+    $_SESSION['admin'] = true;
     $_SESSION['admin_desde'] = time();
 }
 

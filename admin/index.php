@@ -1,6 +1,6 @@
 <?php
 /**
- * Acceso al panel de administración.
+ * Acceso al panel de administración: código numérico de 4 cifras.
  */
 
 declare(strict_types=1);
@@ -17,13 +17,12 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!comprobarCsrf($_POST['csrf'] ?? null)) {
         $error = 'La sesión ha caducado. Inténtalo otra vez.';
-    } elseif (credencialesCorrectas((string) ($_POST['usuario'] ?? ''), (string) ($_POST['password'] ?? ''))) {
-        iniciarSesionAdmin((string) $_POST['usuario']);
+    } elseif (pinCorrecto((string) ($_POST['pin'] ?? ''))) {
+        iniciarSesionAdmin();
         header('Location: panel.php');
         exit;
     } else {
-        // Mensaje genérico a propósito: no se revela qué campo ha fallado.
-        $error = 'Usuario o contraseña incorrectos.';
+        $error = 'Código incorrecto.';
         sleep(1); // frena los intentos por fuerza bruta
     }
 }
@@ -51,14 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <p class="aviso aviso--error" role="alert"><?= e($error) ?></p>
     <?php endif; ?>
 
-    <div class="campo">
-      <label for="usuario">Usuario</label>
-      <input type="text" id="usuario" name="usuario" autocomplete="username" required autofocus>
-    </div>
-
-    <div class="campo">
-      <label for="password">Contraseña</label>
-      <input type="password" id="password" name="password" autocomplete="current-password" required>
+    <div class="campo campo--pin">
+      <label for="pin">Código de acceso</label>
+      <input type="tel" id="pin" name="pin" inputmode="numeric" pattern="\d{4}" maxlength="4"
+             autocomplete="off" required autofocus placeholder="····">
     </div>
 
     <input type="hidden" name="csrf" value="<?= e(tokenCsrf()) ?>">
@@ -66,5 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </form>
 </main>
 
+<script>
+  // Solo dígitos, y enviar solo cuando se han tecleado las 4 cifras.
+  const campoPin = document.getElementById('pin');
+  campoPin.addEventListener('input', () => {
+    campoPin.value = campoPin.value.replace(/\D/g, '').slice(0, 4);
+  });
+</script>
 </body>
 </html>

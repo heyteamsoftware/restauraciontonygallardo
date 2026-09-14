@@ -18,12 +18,12 @@ return [
     ],
 
     // --- Acceso a la administración ---------------------------------
-    // La contraseña NO se guarda en claro, sino su hash. Para generarlo,
-    // abre en el navegador:  https://tu-web/admin/generar_hash.php?clave=loquesea
+    // Código numérico de 4 cifras (no usuario/contraseña). No se guarda en
+    // claro, sino su hash. Para generarlo, abre en el navegador:
+    //   https://tu-web/admin/generar_hash.php?pin=1234
     // copia el resultado aquí y BORRA ese archivo del servidor.
     'admin' => [
-        'usuario'   => 'cafeteria',
-        'hash_pass' => '$2y$10$SUSTITUIR_POR_EL_HASH_GENERADO',
+        'pin_hash' => '$2y$10$SUSTITUIR_POR_EL_HASH_GENERADO',
     ],
 
     // --- Aviso por email al alumno ----------------------------------

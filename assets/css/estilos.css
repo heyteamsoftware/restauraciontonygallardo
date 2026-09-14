@@ -453,6 +453,14 @@ a { color: var(--verde-medio); }
 .login__subtitulo { margin-bottom: 1.5rem; color: var(--texto-suave); font-size: .9rem; }
 .login .aviso { margin-bottom: 1.2rem; }
 
+.campo--pin input {
+  text-align: center;
+  font-size: 2.2rem;
+  letter-spacing: .6em;
+  padding-left: calc(.8rem + .3em); /* compensa el letter-spacing para centrar de verdad */
+  font-weight: 700;
+}
+
 /* ==========================================================================
    6. PANEL DE ADMINISTRACIÓN
    ========================================================================== */
