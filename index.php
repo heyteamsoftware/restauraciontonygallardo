@@ -29,6 +29,9 @@ $abierto = dentroDeHorario();
   <meta name="description" content="Pide tu bocadillo, croasant o sándwich en la cafetería del instituto y recógelo cuando esté listo.">
   <meta name="theme-color" content="#1f3d2b">
   <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/img/icono/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/icono/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/img/icono/apple-touch-icon.png">
   <link rel="stylesheet" href="assets/css/estilos.css?v=<?= filemtime(__DIR__ . '/assets/css/estilos.css') ?>">
 </head>
 <body class="pagina-pedido">

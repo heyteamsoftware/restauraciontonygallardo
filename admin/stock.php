@@ -18,6 +18,9 @@ exigirAdmin();
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Stock · <?= e($CONFIG['app']['nombre']) ?></title>
   <meta name="robots" content="noindex">
+  <link rel="icon" href="../assets/img/icono/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/icono/favicon-32.png">
+  <link rel="apple-touch-icon" href="../assets/img/icono/apple-touch-icon.png">
   <link rel="stylesheet" href="../assets/css/estilos.css?v=<?= filemtime(__DIR__ . '/../assets/css/estilos.css') ?>">
 </head>
 <body class="pagina-panel">
