@@ -9,11 +9,11 @@
 
 return [
 
-    // --- Base de datos (panel de InfinityFree > MySQL Databases) ---
+    // --- Base de datos (MySQL/MariaDB) -------------------------------
     'bd' => [
-        'host'     => 'sqlXXX.infinityfree.com',
-        'nombre'   => 'if0_41719563_cafeteria',
-        'usuario'  => 'if0_41719563',
+        'host'     => 'localhost',
+        'nombre'   => 'PON_AQUI_EL_NOMBRE_DE_LA_BD',
+        'usuario'  => 'PON_AQUI_EL_USUARIO_DE_LA_BD',
         'password' => 'PON_AQUI_LA_CONTRASENA_DE_LA_BD',
     ],
 
@@ -56,7 +56,7 @@ return [
 
     // --- Ajustes generales ------------------------------------------
     'app' => [
-        'nombre'          => 'La cafetería del Tony',
+        'nombre'          => 'La Cafetería del Tony',
         // Horas entre las que se aceptan pedidos (0-23). Fuera de ese
         // rango la web muestra un aviso. Pon [0, 24] para no limitar.
         'horario_pedidos' => [0, 24],
