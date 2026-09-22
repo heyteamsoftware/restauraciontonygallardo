@@ -32,7 +32,10 @@
     entrada: fila.querySelector('.contador__valor'),
     stockBase: fila.dataset.stock === '' ? null : Number(fila.dataset.stock),
     ingredientes: JSON.parse(fila.dataset.ingredientes || '[]'),
-    maxConfigurado: Number(fila.querySelector('.contador__valor').max),
+    // Máximo de unidades por producto en un mismo pedido (independiente del
+    // stock, ver includes/config.php > max_por_producto): no confundir con
+    // cuánto queda, que es lo que se muestra en la etiqueta "Quedan X".
+    maxPorPedido: Number(fila.dataset.maxPedido || 99),
   }));
 
   let disponibleBase = {}; // clave de recurso -> stock del servidor (cesta vacía)
@@ -81,31 +84,38 @@
     productosInfo.forEach((info) => {
       const recursos = recursosDe(info);
       const cantidadActual = Number(info.entrada.value || 0);
+      const sinLimite = !recursos.length;
 
-      let techo = info.maxConfigurado;
+      // Cuánto queda de verdad (sin capar al máximo por pedido): es lo que
+      // se muestra en la etiqueta "Quedan X", para no mentir sobre el stock.
+      let techoStock = Infinity;
       recursos.forEach((r) => {
         if (disponible[r.clave] === Infinity) return;
         const conPropio = disponible[r.clave] + r.cantidad * cantidadActual;
-        techo = Math.min(techo, Math.floor(conPropio / r.cantidad));
+        techoStock = Math.min(techoStock, Math.floor(conPropio / r.cantidad));
       });
-      techo = Math.max(0, techo);
+      if (techoStock === Infinity) techoStock = null; // sin límite real
+      else techoStock = Math.max(0, techoStock);
+
+      // Lo que de verdad se puede seleccionar en el contador: lo que queda,
+      // pero sin pasar del máximo permitido por pedido.
+      const techoPedido = Math.max(0, Math.min(info.maxPorPedido, techoStock ?? info.maxPorPedido));
 
       const etiqueta = info.fila.querySelector('.producto__stock');
       const botones  = info.fila.querySelectorAll('.contador__boton');
-      const sinLimite = !recursos.length;
 
-      info.entrada.max = techo;
-      if (cantidadActual > techo) {
-        info.entrada.value = String(techo);
+      info.entrada.max = techoPedido;
+      if (cantidadActual > techoPedido) {
+        info.entrada.value = String(techoPedido);
         huboCambios = true;
       }
 
       if (etiqueta) {
         etiqueta.hidden = sinLimite;
-        etiqueta.textContent = techo === 0 ? 'Agotado' : `Quedan ${techo}`;
+        etiqueta.textContent = techoStock === 0 ? 'Agotado' : `Quedan ${techoStock}`;
       }
 
-      const agotado = !sinLimite && techo === 0;
+      const agotado = !sinLimite && techoStock === 0;
       info.fila.classList.toggle('producto--agotado', agotado);
       info.entrada.disabled = agotado;
       botones.forEach((b) => { b.disabled = agotado; });
