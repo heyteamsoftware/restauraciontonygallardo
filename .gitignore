@@ -1,6 +1,9 @@
 # Configuración con contraseñas: nunca se sube al repositorio.
 includes/config.php
 
+# Contraseña FTP para publicar (ver subir_ftp.py): nunca se sube al repositorio.
+.ftp_password
+
 # Listado interno de alumnado y personal autorizados a pedir (sin DNI/NIE):
 # nunca se sube al repositorio ni se hace público.
 includes/personas_autorizadas.php
