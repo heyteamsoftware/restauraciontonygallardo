@@ -104,3 +104,13 @@ INSERT INTO productos (nombre, categoria, precio, icono, activo, orden, creado_e
   ('Croasant vegetal',    'Croasants',  2.20, '05-croasant-vegetal.png',1, 5, NOW()),
   ('Sandwich mixto',      'Sandwiches', 2.00, '06-sandwich-mixto.png',  1, 6, NOW()),
   ('Sandwich vegetal',    'Sandwiches', 2.00, '07-sandwich-vegetal.png',1, 7, NOW());
+
+-- -------------------------------------------------------------
+--  Bloqueo por fuerza bruta del PIN de acceso al panel (por IP)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS intentos_pin (
+  ip              VARCHAR(45)  NOT NULL PRIMARY KEY,
+  intentos        INT          NOT NULL DEFAULT 0,
+  bloqueado_hasta DATETIME     NULL,
+  actualizado_en  DATETIME     NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

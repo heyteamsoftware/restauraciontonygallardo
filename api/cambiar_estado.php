@@ -3,13 +3,9 @@
  * POST api/cambiar_estado.php
  * Cambia el estado de un pedido desde el panel.
  *
- * Ni el aviso por correo ni el registro en Google Sheets se hacen aquí:
- * InfinityFree bloquea las conexiones salientes a script.google.com desde
- * el servidor. En su lugar, esta respuesta incluye los datos del pedido
- * (bloque "registro") para que sea el propio navegador del panel
- * (assets/js/panel.js) quien llame al Apps Script directamente —el
- * navegador del admin sí puede alcanzarlo— y luego confirme con
- * api/marcar_registrado_hoja.php y api/marcar_aviso_enviado.php.
+ * Al completarse, el propio servidor llama al Apps Script (registrar en
+ * el Sheet / mandar el correo de aviso) mediante llamarAppsScript(): así
+ * la contraseña del webhook no tiene que viajar al navegador del panel.
  *
  * Cuerpo (JSON): { id, estado, csrf }
  */
@@ -79,12 +75,12 @@ if ($estado === 'completado') {
 }
 
 // -----------------------------------------------------------------
-//  Al completar el pedido: se prepara lo necesario para que el
-//  navegador avise por correo y registre en el Sheet (cada cosa una
-//  sola vez, aunque el pedido se reabra y se vuelva a completar).
+//  Al completar el pedido: se avisa por correo y se registra en el
+//  Sheet (cada cosa una sola vez, aunque el pedido se reabra y se
+//  vuelva a completar), llamando al Apps Script desde el propio
+//  servidor.
 // -----------------------------------------------------------------
-$aviso    = 'no_procede';
-$registro = null;
+$aviso = 'no_procede';
 
 if ($estado === 'completado') {
     $necesitaAviso = !$pedido['aviso_enviado'];
@@ -104,23 +100,46 @@ if ($estado === 'completado') {
         foreach ($consultaLineas->fetchAll() as $linea) {
             $productos[] = sprintf('%d x %s', $linea['cantidad'], $linea['nombre_producto']);
         }
+        $productos = implode(', ', $productos);
 
-        $registro = [
-            'id'             => $id,
-            'necesitaAviso'  => $necesitaAviso,
-            'necesitaHoja'   => $necesitaHoja,
-            'codigo'         => $pedido['codigo'],
-            'nombre'         => $pedido['nombre'],
-            'email'          => $pedido['email'],
-            'productos'      => implode(', ', $productos),
-            'notas'          => $pedido['notas'] ?? '',
-            'total'          => (float) $pedido['total'],
-        ];
+        if ($necesitaHoja) {
+            $resultado = llamarAppsScript('registrarPedido', [
+                'codigo'    => $pedido['codigo'],
+                'nombre'    => $pedido['nombre'],
+                'email'     => $pedido['email'],
+                'productos' => $productos,
+                'notas'     => $pedido['notas'] ?? '',
+                'total'     => (float) $pedido['total'],
+            ]);
+            if ($resultado['ok']) {
+                $pdo->prepare('UPDATE pedidos SET registrado_hoja = 1 WHERE id = ?')->execute([$id]);
+            } else {
+                error_log('No se pudo registrar en la hoja: ' . ($resultado['error'] ?? ''));
+            }
+        }
 
         if ($necesitaAviso) {
-            $aviso = null; // el navegador dirá si se ha enviado o no
+            $cuerpo = "Hola {$pedido['nombre']},\n\n"
+                . "Tu pedido está listo para recoger. Enseña este código en la cafetería:\n\n"
+                . "  {$pedido['codigo']}\n\n"
+                . "Pedido: {$productos}\n"
+                . 'Total: ' . number_format((float) $pedido['total'], 2, ',', '.') . ' €'
+                . (!empty($pedido['notas']) ? "\n\nNotas: {$pedido['notas']}" : '');
+
+            $resultado = llamarAppsScript('email', [
+                'to'     => $pedido['email'],
+                'asunto' => "Tu pedido {$pedido['codigo']} ya está listo",
+                'cuerpo' => $cuerpo,
+            ]);
+            if ($resultado['ok']) {
+                $pdo->prepare('UPDATE pedidos SET aviso_enviado = 1 WHERE id = ?')->execute([$id]);
+                $aviso = 'ok';
+            } else {
+                error_log('No se pudo enviar el aviso por correo: ' . ($resultado['error'] ?? ''));
+                $aviso = 'fallido';
+            }
         }
     }
 }
 
-json(['ok' => true, 'estado' => $estado, 'aviso' => $aviso, 'registro' => $registro]);
+json(['ok' => true, 'estado' => $estado, 'aviso' => $aviso]);

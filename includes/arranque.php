@@ -295,6 +295,54 @@ function lineasDelPedido(PDO $pdo, int $pedidoId): array
     ], $consulta->fetchAll());
 }
 
+/**
+ * Llama a la acción del Apps Script (registrar en el Sheet o mandar un
+ * email), directamente desde el servidor. Antes esto lo hacía el propio
+ * navegador del panel porque InfinityFree bloqueaba las conexiones
+ * salientes a script.google.com; el hosting actual sí puede alcanzarlo,
+ * así que la contraseña del webhook ya no necesita viajar al navegador.
+ *
+ * @return array{ok: bool, error?: string}
+ */
+function llamarAppsScript(string $accion, array $datosExtra): array
+{
+    global $CONFIG;
+    $webhook  = $CONFIG['hoja']['webhook'] ?? '';
+    $password = $CONFIG['hoja']['password'] ?? '';
+
+    if ($webhook === '') {
+        return ['ok' => false, 'error' => 'Apps Script no configurado.'];
+    }
+
+    $cuerpo = json_encode(['action' => $accion, 'password' => $password, ...$datosExtra], JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init($webhook);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $cuerpo,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 15,
+    ]);
+    $respuesta = curl_exec($ch);
+    $error     = curl_error($ch);
+    curl_close($ch);
+
+    if ($respuesta === false) {
+        error_log("Apps Script ($accion): $error");
+        return ['ok' => false, 'error' => $error];
+    }
+
+    $json = json_decode($respuesta, true);
+    if (!is_array($json)) {
+        error_log("Apps Script ($accion): respuesta no válida: $respuesta");
+        return ['ok' => false, 'error' => 'Respuesta no válida del Apps Script.'];
+    }
+
+    return $json;
+}
+
 /** ¿Estamos dentro del horario en el que se aceptan pedidos? */
 function dentroDeHorario(): bool
 {

@@ -273,15 +273,9 @@
       } else if (datos.aviso === 'fallido') {
         alert('El pedido se ha marcado como listo, pero no se ha podido enviar el correo. Avisa al alumno de viva voz.');
       }
-
-      // El aviso por correo y el registro en el Sheet los hace este
-      // navegador, no el servidor (ver más abajo). Se espera a que termine
-      // antes de repintar: si no, el repintado inmediato vería aviso_enviado
-      // todavía en false y mostraría "no se pudo avisar" aunque el envío
-      // esté en curso y acabe funcionando bien un instante después.
-      if (datos.ok && datos.registro) {
-        await procesarRegistro(datos.registro);
-      }
+      // El aviso por correo y el registro en el Sheet los hace el propio
+      // servidor dentro de api/cambiar_estado.php (ver includes/arranque.php
+      // > llamarAppsScript()); aquí solo se informa si algo ha fallado.
     } catch {
       alert('Sin conexión. El cambio no se ha guardado.');
     } finally {
@@ -289,85 +283,6 @@
       await refrescar();
     }
   });
-
-  /* ---------- Aviso por correo y registro en Google Sheets ----------
-     Ambos se hacen llamando directamente al Apps Script desde este
-     navegador: el servidor PHP no puede alcanzar script.google.com desde
-     InfinityFree, pero el navegador del panel sí. El truco de usar
-     Content-Type: text/plain evita el preflight CORS — Apps Script
-     igualmente lee el cuerpo como JSON. */
-
-  async function llamarAppsScript(accion, datosExtra) {
-    const respuesta = await fetch(HOJA_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: accion, password: HOJA_PASSWORD, ...datosExtra }),
-    });
-    return respuesta.json();
-  }
-
-  async function procesarRegistro(registro) {
-    if (!HOJA_WEBHOOK) return; // Apps Script no configurado: se omite en silencio
-
-    const datosPedido = {
-      codigo: registro.codigo,
-      nombre: registro.nombre,
-      email: registro.email,
-      productos: registro.productos,
-      notas: registro.notas,
-      total: registro.total,
-    };
-
-    if (registro.necesitaHoja) {
-      try {
-        const resultado = await llamarAppsScript('registrarPedido', datosPedido);
-        if (resultado.ok) {
-          await confirmarAlServidor('../api/marcar_registrado_hoja.php', registro.id);
-        } else {
-          console.error('No se pudo registrar en la hoja:', resultado.error);
-        }
-      } catch (error) {
-        console.error('Error al registrar en la hoja:', error);
-      }
-    }
-
-    if (registro.necesitaAviso) {
-      try {
-        const resultado = await llamarAppsScript('email', {
-          to: registro.email,
-          asunto: `Tu pedido ${registro.codigo} ya está listo`,
-          cuerpo: textoAvisoCorreo(registro),
-        });
-        if (resultado.ok) {
-          await confirmarAlServidor('../api/marcar_aviso_enviado.php', registro.id);
-        } else {
-          console.error('No se pudo enviar el aviso por correo:', resultado.error);
-          alert('El pedido se ha marcado como listo, pero no se ha podido enviar el correo. Avisa al alumno de viva voz.');
-        }
-      } catch (error) {
-        console.error('Error al enviar el aviso por correo:', error);
-        alert('El pedido se ha marcado como listo, pero no se ha podido enviar el correo. Avisa al alumno de viva voz.');
-      }
-    }
-  }
-
-  function textoAvisoCorreo(registro) {
-    return `Hola ${registro.nombre},\n\n`
-      + `Tu pedido está listo para recoger. Enseña este código en la cafetería:\n\n`
-      + `  ${registro.codigo}\n\n`
-      + `Pedido: ${registro.productos}\n`
-      + `Total: ${euros(registro.total)}`
-      + (registro.notas ? `\n\nNotas: ${registro.notas}` : '');
-  }
-
-  async function confirmarAlServidor(url, id) {
-    // Para no reintentarlo si el pedido se reabre y se vuelve a completar.
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, csrf: CSRF }),
-    });
-  }
 
   /* ---------- Cambio de día ---------- */
 

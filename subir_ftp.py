@@ -1,40 +1,42 @@
 #!/usr/bin/env python3
 """
-subir_ftp.py — Publica este proyecto por FTP en el servidor propio.
+subir_ftp.py — Publica este proyecto por SFTP (SSH cifrado) en el servidor propio.
 
 Uso:
     python subir_ftp.py
 
 Sube el contenido de la carpeta del proyecto (raíz de este script) a
-/Tony_Restauracion/ en myappsserver.duckdns.org, creando subcarpetas
-remotas que no existan y sobrescribiendo los archivos que ya estén.
-No borra nada en el servidor.
+/var/www/html/Tony_Restauracion en myappsserver.duckdns.org, creando
+subcarpetas remotas que no existan y sobrescribiendo los archivos que ya
+estén. No borra nada en el servidor.
 
-La contraseña se lee de un archivo local ".ftp_password" (una sola
-línea, sin saltos ni espacios extra) que NUNCA se sube al repositorio
-(ver .gitignore). Si no existe, créalo tú mismo con la contraseña real
-antes de ejecutar este script.
+Todo el tráfico (incluida la autenticación) va cifrado por SSH, a
+diferencia del antiguo FTP en claro. La autenticación es por clave
+privada, no por contraseña: la clave se lee de la ruta indicada en
+CLAVE_SSH (fuera de este repositorio, nunca se sube ni se commitea).
 """
 
 from __future__ import annotations
 
 import fnmatch
-import ftplib
+import stat
 import sys
 from pathlib import Path
+
+import paramiko
 
 # ---------------------------------------------------------------------
 #  Configuración
 # ---------------------------------------------------------------------
 
 HOST = "myappsserver.duckdns.org"
-PUERTO = 21
-USUARIO = "fernando"
+PUERTO = 22
+USUARIO = "ubuntu"
+
+CLAVE_SSH = Path(r"C:\Users\ferna\OneDrive\Documentos\Oracle\servidor-apps.key")
 
 CARPETA_LOCAL = Path(__file__).resolve().parent
-CARPETA_REMOTA = "/Tony_Restauracion"
-
-ARCHIVO_PASSWORD = CARPETA_LOCAL / ".ftp_password"
+CARPETA_REMOTA = "/var/www/html/Tony_Restauracion"
 
 # Archivos/carpetas que jamás se tocan en el servidor (ni se suben ni se
 # borran), aunque existan en local: son configuración/datos propios del
@@ -75,19 +77,6 @@ def se_ignora(nombre: str) -> bool:
     return any(fnmatch.fnmatch(nombre, patron) for patron in IGNORAR_PATRONES)
 
 
-def leer_password() -> str:
-    if not ARCHIVO_PASSWORD.is_file():
-        sys.exit(
-            f"ERROR: no existe {ARCHIVO_PASSWORD}.\n"
-            "Crea ese archivo con la contraseña FTP (una sola línea) antes de "
-            "ejecutar este script."
-        )
-    password = ARCHIVO_PASSWORD.read_text(encoding="utf-8").strip()
-    if not password:
-        sys.exit(f"ERROR: {ARCHIVO_PASSWORD} está vacío.")
-    return password
-
-
 def recopilar_archivos_locales() -> list[Path]:
     """Todas las rutas de archivo bajo CARPETA_LOCAL, ya filtradas."""
     archivos: list[Path] = []
@@ -105,7 +94,7 @@ def recopilar_archivos_locales() -> list[Path]:
     return archivos
 
 
-def asegurar_carpeta_remota(ftp: ftplib.FTP, carpeta: str, cache: set[str]) -> None:
+def asegurar_carpeta_remota(sftp: paramiko.SFTPClient, carpeta: str, cache: set[str]) -> None:
     """Crea (si hace falta) toda la cadena de subcarpetas remotas hasta 'carpeta'."""
     if carpeta in cache:
         return
@@ -117,23 +106,24 @@ def asegurar_carpeta_remota(ftp: ftplib.FTP, carpeta: str, cache: set[str]) -> N
         if actual in cache:
             continue
         try:
-            ftp.mkd(actual)
-        except ftplib.error_perm as e:
-            # 550 = ya existe (o no se puede crear); si ya existe no es un error.
-            if not str(e).startswith("550"):
-                raise
+            sftp.stat(actual)
+        except FileNotFoundError:
+            sftp.mkdir(actual)
         cache.add(actual)
 
 
 def main() -> None:
-    password = leer_password()
+    if not CLAVE_SSH.is_file():
+        sys.exit(f"ERROR: no existe la clave SSH {CLAVE_SSH}.")
+
     archivos = recopilar_archivos_locales()
 
-    print(f"Conectando a {HOST}:{PUERTO} como '{USUARIO}' (modo pasivo)...")
-    ftp = ftplib.FTP()
-    ftp.connect(HOST, PUERTO, timeout=30)
-    ftp.login(USUARIO, password)
-    ftp.set_pasv(True)
+    print(f"Conectando a {HOST}:{PUERTO} como '{USUARIO}' por SSH (clave privada)...")
+    clave = paramiko.Ed25519Key.from_private_key_file(str(CLAVE_SSH))
+    cliente = paramiko.SSHClient()
+    cliente.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    cliente.connect(HOST, port=PUERTO, username=USUARIO, pkey=clave, timeout=30)
+    sftp = cliente.open_sftp()
     print("Conectado.\n")
 
     carpetas_creadas: set[str] = {""}
@@ -154,19 +144,16 @@ def main() -> None:
             carpeta_remota = ruta_remota.rsplit("/", 1)[0]
 
             try:
-                asegurar_carpeta_remota(ftp, carpeta_remota, carpetas_creadas)
-                with ruta_local.open("rb") as f:
-                    ftp.storbinary(f"STOR {ruta_remota}", f)
+                asegurar_carpeta_remota(sftp, carpeta_remota, carpetas_creadas)
+                sftp.put(str(ruta_local), ruta_remota)
                 subidos += 1
                 print(f"  [subido] {ruta_relativa}")
             except Exception as e:  # noqa: BLE001 — se quiere seguir con el resto
                 errores.append((ruta_relativa, str(e)))
                 print(f"  [ERROR] {ruta_relativa}: {e}")
     finally:
-        try:
-            ftp.quit()
-        except Exception:
-            ftp.close()
+        sftp.close()
+        cliente.close()
 
     print("\n" + "=" * 60)
     print("Resumen")

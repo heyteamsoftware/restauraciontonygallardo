@@ -13,17 +13,25 @@ if (hayAdmin()) {
 }
 
 $error = '';
+$minutosBloqueo = minutosBloqueoRestantes();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $minutosBloqueo > 0) {
+    $error = "Demasiados intentos. Vuelve a probar en $minutosBloqueo min.";
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!comprobarCsrf($_POST['csrf'] ?? null)) {
         $error = 'La sesión ha caducado. Inténtalo otra vez.';
     } elseif (pinCorrecto((string) ($_POST['pin'] ?? ''))) {
+        limpiarIntentosFallidos();
         iniciarSesionAdmin();
         header('Location: panel.php');
         exit;
     } else {
-        $error = 'Código incorrecto.';
-        sleep(1); // frena los intentos por fuerza bruta
+        registrarIntentoFallido();
+        $minutosBloqueo = minutosBloqueoRestantes();
+        $error = $minutosBloqueo > 0
+            ? "Demasiados intentos. Vuelve a probar en $minutosBloqueo min."
+            : 'Código incorrecto.';
+        sleep(1); // frena también los intentos automatizados más lentos
     }
 }
 ?>
@@ -53,11 +61,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="campo campo--pin">
       <label for="pin">Código de acceso</label>
       <input type="tel" id="pin" name="pin" inputmode="numeric" pattern="\d{4}" maxlength="4"
-             autocomplete="off" required autofocus placeholder="····">
+             autocomplete="off" required autofocus placeholder="····" <?= $minutosBloqueo > 0 ? 'disabled' : '' ?>>
     </div>
 
     <input type="hidden" name="csrf" value="<?= e(tokenCsrf()) ?>">
-    <button class="boton boton--principal boton--ancho" type="submit">Entrar</button>
+    <button class="boton boton--principal boton--ancho" type="submit" <?= $minutosBloqueo > 0 ? 'disabled' : '' ?>>Entrar</button>
   </form>
 </main>
 

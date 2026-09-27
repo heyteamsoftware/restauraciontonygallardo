@@ -22,6 +22,70 @@ function pinCorrecto(string $pin): bool
     return password_verify($pin, $CONFIG['admin']['pin_hash']);
 }
 
+/** IP del visitante (para el bloqueo por intentos fallidos). */
+function ipVisitante(): string
+{
+    return substr((string) ($_SERVER['REMOTE_ADDR'] ?? 'desconocida'), 0, 45);
+}
+
+/**
+ * Bloqueo por fuerza bruta del PIN, por IP: a partir de 5 intentos
+ * fallidos seguidos, se bloquea con una espera que crece cada vez
+ * (5 min, 10, 20... hasta un tope de 24h). Se guarda en la tabla
+ * intentos_pin (ver sql/esquema.sql) en vez de en la sesión, porque un
+ * ataque real no manda cookies entre peticiones.
+ *
+ * @return int Minutos que quedan de bloqueo (0 si no está bloqueada).
+ */
+function minutosBloqueoRestantes(): int
+{
+    // La resta se hace en el propio SQL (con NOW(), en la zona horaria del
+    // servidor de base de datos) en vez de con strtotime()/time() en PHP:
+    // date_default_timezone_set() cambia cómo PHP interpreta la fecha leída
+    // y desincroniza esa comparación con la hora real.
+    $ip = ipVisitante();
+    $consulta = bd()->prepare(
+        'SELECT GREATEST(0, CEIL(TIMESTAMPDIFF(SECOND, NOW(), bloqueado_hasta) / 60))
+           FROM intentos_pin WHERE ip = ?'
+    );
+    $consulta->execute([$ip]);
+    $minutos = $consulta->fetchColumn();
+
+    return $minutos !== false ? (int) $minutos : 0;
+}
+
+/** Registra un intento fallido y calcula si toca bloquear (y cuánto tiempo). */
+function registrarIntentoFallido(): void
+{
+    $ip  = ipVisitante();
+    $pdo = bd();
+
+    $pdo->prepare(
+        'INSERT INTO intentos_pin (ip, intentos, actualizado_en)
+         VALUES (?, 1, NOW())
+         ON DUPLICATE KEY UPDATE intentos = intentos + 1, actualizado_en = NOW()'
+    )->execute([$ip]);
+
+    $consulta = $pdo->prepare('SELECT intentos FROM intentos_pin WHERE ip = ?');
+    $consulta->execute([$ip]);
+    $intentos = (int) $consulta->fetchColumn();
+
+    if ($intentos < 5) {
+        return; // aún no toca bloquear
+    }
+
+    // 5 intentos -> 5 min; cada intento de más dobla la espera, hasta 24h.
+    $minutos = min(5 * 2 ** ($intentos - 5), 24 * 60);
+    $pdo->prepare('UPDATE intentos_pin SET bloqueado_hasta = NOW() + INTERVAL ? MINUTE WHERE ip = ?')
+        ->execute([$minutos, $ip]);
+}
+
+/** Se llama al acertar el PIN: olvida los intentos fallidos previos de esta IP. */
+function limpiarIntentosFallidos(): void
+{
+    bd()->prepare('DELETE FROM intentos_pin WHERE ip = ?')->execute([ipVisitante()]);
+}
+
 function iniciarSesionAdmin(): void
 {
     iniciarSesion();

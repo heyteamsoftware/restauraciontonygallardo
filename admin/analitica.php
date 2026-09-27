@@ -24,7 +24,9 @@ $rangoInicial = analiticaValorCurso(analiticaAnioInicioCursoActual());
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/icono/favicon-32.png">
   <link rel="apple-touch-icon" href="../assets/img/icono/apple-touch-icon.png">
   <link rel="stylesheet" href="../assets/css/estilos.css?v=<?= filemtime(__DIR__ . '/../assets/css/estilos.css') ?>">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"
+          integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body class="pagina-panel">
 
@@ -155,12 +157,52 @@ $rangoInicial = analiticaValorCurso(analiticaAnioInicioCursoActual());
       <div class="recomendaciones" id="recomendaciones"></div>
     </section>
 
+    <!-- ---------- Privacidad ---------- -->
+    <section class="bloque-analitica">
+      <h2 class="bloque-analitica__titulo">Privacidad</h2>
+      <p class="bloque-analitica__ayuda">
+        Borra el nombre y el correo de los pedidos de cursos escolares ya
+        terminados (todo lo anterior al 1 de septiembre de este curso),
+        tal y como se indica en la política de privacidad. Los productos
+        y el importe se conservan para la analítica histórica.
+      </p>
+      <button class="boton boton--peligro" id="botonAnonimizar" type="button">
+        Anonimizar pedidos de cursos anteriores
+      </button>
+      <p class="bloque-analitica__ayuda" id="anonimizarResultado" aria-live="polite"></p>
+    </section>
+
   </div>
 </main>
 
 <script>
   // Curso escolar actual (p. ej. "curso_2026"): rango con el que arranca el panel.
   const RANGO_INICIAL = <?= json_encode($rangoInicial) ?>;
+  const CSRF = <?= json_encode(tokenCsrf()) ?>;
+
+  document.getElementById('botonAnonimizar').addEventListener('click', async () => {
+    if (!confirm('¿Anonimizar los pedidos de cursos escolares anteriores? No se puede deshacer.')) return;
+
+    const boton = document.getElementById('botonAnonimizar');
+    const resultado = document.getElementById('anonimizarResultado');
+    boton.disabled = true;
+
+    try {
+      const respuesta = await fetch('../api/anonimizar_cursos_antiguos.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csrf: CSRF }),
+      });
+      const datos = await respuesta.json();
+      resultado.textContent = datos.ok
+        ? `Hecho: ${datos.anonimizados} pedido(s) anonimizado(s).`
+        : (datos.error || 'No se ha podido completar la operación.');
+    } catch {
+      resultado.textContent = 'Sin conexión. Inténtalo de nuevo.';
+    } finally {
+      boton.disabled = false;
+    }
+  });
 </script>
 <script src="../assets/js/conexion.js?v=<?= filemtime(__DIR__ . '/../assets/js/conexion.js') ?>"></script>
 <script src="../assets/js/analitica.js?v=<?= filemtime(__DIR__ . '/../assets/js/analitica.js') ?>"></script>
