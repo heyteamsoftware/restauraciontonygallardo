@@ -86,8 +86,10 @@
       const cantidadActual = Number(info.entrada.value || 0);
       const sinLimite = !recursos.length;
 
-      // Cuánto queda de verdad (sin capar al máximo por pedido): es lo que
-      // se muestra en la etiqueta "Quedan X", para no mentir sobre el stock.
+      // Techo real del contador (para el atributo "max"): hasta cuánto se
+      // podría subir este producto sumando lo que ya lleva puesto, sin
+      // pasarse del stock disponible. Se le vuelve a sumar su propia
+      // cantidad porque, si soy el único que lo pide, podría llevármelo todo.
       let techoStock = Infinity;
       recursos.forEach((r) => {
         if (disponible[r.clave] === Infinity) return;
@@ -96,6 +98,16 @@
       });
       if (techoStock === Infinity) techoStock = null; // sin límite real
       else techoStock = Math.max(0, techoStock);
+
+      // Lo que se muestra en la etiqueta "Quedan X": lo mismo, pero SIN
+      // volver a sumar lo que ya llevo puesto en el contador, para que baje
+      // según voy pulsando "+" (así se ve en tiempo real cuánto me queda).
+      let restante = Infinity;
+      recursos.forEach((r) => {
+        if (disponible[r.clave] === Infinity) return;
+        restante = Math.min(restante, Math.floor(disponible[r.clave] / r.cantidad));
+      });
+      restante = restante === Infinity ? null : Math.max(0, restante);
 
       // Lo que de verdad se puede seleccionar en el contador: lo que queda,
       // pero sin pasar del máximo permitido por pedido.
@@ -112,7 +124,7 @@
 
       if (etiqueta) {
         etiqueta.hidden = sinLimite;
-        etiqueta.textContent = techoStock === 0 ? 'Agotado' : `Quedan ${techoStock}`;
+        etiqueta.textContent = restante === 0 ? 'Agotado' : `Quedan ${restante}`;
       }
 
       const agotado = !sinLimite && techoStock === 0;
