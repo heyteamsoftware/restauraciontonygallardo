@@ -37,10 +37,11 @@ if (mb_strlen($nombre) < 3 || mb_strlen($nombre) > 120) {
     $errores['nombre'] = 'Escribe tu nombre y apellidos.';
 }
 
-// El correo es opcional: solo se valida el formato si se ha rellenado.
 $email = trim((string) ($datos['email'] ?? ''));
-if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 150)) {
-    $errores['email'] = 'Ese correo no parece válido. Corrígelo o déjalo en blanco.';
+if ($email === '') {
+    $errores['email'] = 'Escribe tu correo electrónico.';
+} elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 150) {
+    $errores['email'] = 'Ese correo no parece válido. Corrígelo.';
 }
 
 $notas = trim((string) ($datos['notas'] ?? ''));

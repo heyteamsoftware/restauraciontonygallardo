@@ -141,10 +141,10 @@ $abierto = dentroDeHorario();
         </div>
 
         <div class="campo">
-          <label for="email">Correo electrónico <span class="campo__opcional">(opcional)</span></label>
+          <label for="email">Correo electrónico <span class="campo__obligatorio">(obligatorio)</span></label>
           <input type="email" id="email" name="email" autocomplete="email" maxlength="150"
-                 placeholder="nombre@ejemplo.com">
-          <p class="campo__ayuda">Si lo dejas, te avisamos aquí en cuanto tu pedido esté listo.</p>
+                 placeholder="nombre@ejemplo.com" required>
+          <p class="campo__ayuda">Te avisamos aquí en cuanto tu pedido esté listo.</p>
           <p class="campo__error" id="error-email" hidden></p>
         </div>
 
@@ -184,9 +184,9 @@ $abierto = dentroDeHorario();
       <ul>
         <li><strong>Responsable:</strong> CIFP Tony Gallardo.</li>
         <li><strong>Contacto:</strong> Ctra. de las Coloradas, 35009 Las Palmas de Gran Canaria · Tel. +34 928 79 62 92.</li>
-        <li><strong>Finalidad:</strong> Gestionar la comanda del pedido e identificarlo (mediante nombre o apodo) y, opcionalmente, enviar la confirmación/estado por correo electrónico.</li>
-        <li><strong>Legitimación:</strong> Ejecución de la solicitud de pedido y consentimiento del usuario al facilitar el correo opcional.</li>
-        <li><strong>Conservación:</strong> Los datos se guardan de forma temporal durante el curso escolar, con fines de gestión y estadística de la cafetería, y se eliminan o anonimizan al finalizar el curso.</li>
+        <li><strong>Finalidad:</strong> Gestionar la comanda del pedido, identificarlo (mediante nombre o apodo) y avisar por correo electrónico cuando esté listo para recoger.</li>
+        <li><strong>Legitimación:</strong> Ejecución de la solicitud de pedido (art. 6.1.b RGPD): el correo es necesario para poder avisarte.</li>
+        <li><strong>Conservación:</strong> Los datos se guardan durante el curso escolar en que se hizo el pedido, con fines de gestión y estadística de la cafetería. Al empezar el curso siguiente, la administración anonimiza (borra nombre y correo) los pedidos del curso anterior.</li>
         <li><strong>Derechos:</strong> Puedes solicitar la supresión o acceso a tus datos escribiendo a <a href="mailto:secretaria@iestonygallardo.com">secretaria@iestonygallardo.com</a>.</li>
       </ul>
 
@@ -201,31 +201,39 @@ $abierto = dentroDeHorario();
       </ul>
 
       <h4>2. Datos personales recabados</h4>
-      <p>Para el uso del servicio de pedidos de la aplicación, únicamente se solicitan los siguientes datos:</p>
+      <p>Para hacer un pedido en la aplicación se solicitan únicamente los siguientes datos:</p>
       <ul>
         <li><strong>Nombre o pseudónimo (obligatorio):</strong> no requiere verificación de identidad real. Se utiliza exclusivamente para identificar el pedido al momento de la entrega o recogida. <strong>No se solicita ni se guarda ningún documento de identidad (DNI/NIE) en ningún momento del proceso.</strong></li>
-        <li><strong>Correo electrónico (opcional):</strong> se solicita únicamente si el usuario desea recibir notificaciones o confirmaciones sobre el estado de su pedido.</li>
+        <li><strong>Correo electrónico (obligatorio):</strong> se usa únicamente para avisarte por correo cuando tu pedido esté listo para recoger.</li>
+        <li><strong>Observaciones (opcional):</strong> notas libres sobre el pedido (por ejemplo, alergias o preferencias), si decides escribirlas.</li>
       </ul>
+      <p>
+        Además, al completarse el pedido se registran de forma automática los productos, el importe
+        y la hora en una hoja de cálculo interna de gestión (Google Sheets), con la misma finalidad
+        de gestión del pedido — ver el punto 5 sobre esta cesión a un encargado del tratamiento.
+      </p>
 
       <h4>3. Finalidad y base jurídica del tratamiento</h4>
       <ul>
-        <li><strong>Gestión operativa del pedido (nombre/alias):</strong> la base legal es la prestación del servicio solicitado por el usuario (art. 6.1.b del RGPD).</li>
-        <li><strong>Envío de notificaciones (correo opcional):</strong> la base legal es el consentimiento explícito brindado por el usuario al introducir voluntariamente su dirección de correo electrónico (art. 6.1.a del RGPD).</li>
+        <li><strong>Gestión operativa del pedido (nombre, correo, productos):</strong> la base legal es la prestación del servicio solicitado por el usuario (art. 6.1.b del RGPD). El correo es un dato necesario para completar el pedido, no opcional, porque sin él no es posible avisar de que está listo.</li>
       </ul>
 
       <h4>4. Plazo de conservación de los datos</h4>
       <p>En cumplimiento del principio de minimización y limitación del plazo de conservación:</p>
       <ul>
         <li>Los datos se procesan en el momento de la comanda para gestionar el pedido y su entrega.</li>
-        <li>Además, se conservan de forma temporal durante el curso escolar en curso con fines de gestión interna y estadísticos de la cafetería (por ejemplo, para saber qué productos se piden más).</li>
-        <li>Al finalizar el curso escolar, los datos personales serán eliminados o anonimizados completamente de la base de datos de la aplicación.</li>
+        <li>Se conservan durante el curso escolar en que se realizó el pedido, con fines de gestión interna y estadísticos de la cafetería (por ejemplo, para saber qué productos se piden más).</li>
+        <li>Al empezar un nuevo curso escolar, la administración de la cafetería anonimiza manualmente (borra el nombre y el correo, conservando solo los productos e importes) los pedidos de cursos anteriores desde el propio panel de gestión.</li>
       </ul>
 
       <h4>5. Destinatarios y cesiones</h4>
       <p>
-        No se cederán datos a terceros salvo obligación legal. En caso de alojar la aplicación en
-        servidores externos (servicios en la nube o hosting), estos actuarán bajo la condición de
-        Encargados del Tratamiento garantizando los estándares de seguridad exigidos por el RGPD.
+        No se ceden datos a terceros salvo obligación legal, con la siguiente excepción operativa:
+        al completar un pedido, el nombre, el correo, los productos y el importe se envían a
+        <strong>Google (Google Sheets / Apps Script)</strong> para registrar la venta y enviar el
+        aviso por correo, actuando Google como Encargado del Tratamiento. La aplicación se aloja en
+        un servidor propio del centro (no en un hosting de terceros), por lo que no hay más
+        encargados del tratamiento adicionales por el alojamiento.
       </p>
 
       <h4>6. Derechos de los usuarios</h4>

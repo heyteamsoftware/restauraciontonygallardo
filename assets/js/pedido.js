@@ -267,9 +267,11 @@
       mostrarError('nombre', 'Escribe tu nombre y apellidos.');
       correcto = false;
     }
-    // El correo es opcional: solo se valida el formato si se ha rellenado.
-    if (datos.email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(datos.email)) {
-      mostrarError('email', 'Ese correo no parece válido. Corrígelo o déjalo en blanco.');
+    if (datos.email === '') {
+      mostrarError('email', 'Escribe tu correo electrónico.');
+      correcto = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(datos.email)) {
+      mostrarError('email', 'Ese correo no parece válido. Corrígelo.');
       correcto = false;
     }
     if (datos.lineas.length === 0) {
