@@ -1,6 +1,6 @@
 -- =============================================================
 --  Cafetería del instituto — esquema de base de datos
---  Ejecutar una sola vez desde phpMyAdmin (panel de InfinityFree).
+--  Ejecutar una sola vez desde phpMyAdmin.
 --  Compatible con MySQL 5.7 / MariaDB.
 -- =============================================================
 
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS producto_ingredientes (
 CREATE TABLE IF NOT EXISTS pedidos (
   id             INT AUTO_INCREMENT PRIMARY KEY,
   codigo         VARCHAR(12)   NOT NULL,
-  persona_id     VARCHAR(20)   NOT NULL, -- ID interno de includes/personas_autorizadas.php; NUNCA un DNI
+  persona_id     VARCHAR(20)   NOT NULL, -- 'web' = pedido online, '' = venta en mostrador (solo distingue el canal); NUNCA un DNI
   nombre         VARCHAR(120)  NOT NULL,
   email          VARCHAR(150)  NOT NULL,
   estado         ENUM('pendiente','en_curso','completado','archivado','cancelado')
@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS pedido_lineas (
   nombre_producto VARCHAR(100)  NOT NULL,
   precio_unitario DECIMAL(5,2)  NOT NULL,
   cantidad        INT           NOT NULL,
+  receta_json     TEXT          NULL, -- receta vigente al pedirse (ver includes/arranque.php)
   INDEX idx_lineas_pedido (pedido_id),
   CONSTRAINT fk_lineas_pedido  FOREIGN KEY (pedido_id)   REFERENCES pedidos(id)   ON DELETE CASCADE,
   CONSTRAINT fk_lineas_producto FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE SET NULL
@@ -114,3 +115,19 @@ CREATE TABLE IF NOT EXISTS intentos_pin (
   bloqueado_hasta DATETIME     NULL,
   actualizado_en  DATETIME     NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  Ajustes de la aplicación (p. ej. interruptor abrir/cerrar cafetería)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ajustes (
+  clave VARCHAR(50)  NOT NULL PRIMARY KEY,
+  valor VARCHAR(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO ajustes (clave, valor) VALUES ('cafeteria_abierta', '1');
+
+-- -------------------------------------------------------------
+--  Receta que tenía cada línea al pedirse (para devolver el stock exacto
+--  aunque la receta del producto cambie después). Solo en bases ya creadas:
+--  ALTER TABLE pedido_lineas ADD COLUMN receta_json TEXT NULL;
+-- -------------------------------------------------------------

@@ -121,19 +121,7 @@ try {
 
     $pedidoId = (int) $pdo->lastInsertId();
 
-    $insertarLinea = $pdo->prepare(
-        'INSERT INTO pedido_lineas (pedido_id, producto_id, nombre_producto, precio_unitario, cantidad)
-         VALUES (?, ?, ?, ?, ?)'
-    );
-    foreach ($lineas as $linea) {
-        $insertarLinea->execute([
-            $pedidoId,
-            $linea['producto_id'],
-            $linea['nombre_producto'],
-            $linea['precio_unitario'],
-            $linea['cantidad'],
-        ]);
-    }
+    insertarLineasPedido($pdo, $pedidoId, $lineas);
 
     $errorStock = descontarStock($pdo, $lineas);
     if ($errorStock !== null) {

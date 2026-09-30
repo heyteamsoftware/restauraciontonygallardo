@@ -392,11 +392,32 @@
      pidiendo a la vez, el número de unidades disponibles (y el máximo que
      se puede elegir) se mantenga al día sin tener que recargar la página. */
 
+  /** Muestra/oculta el aviso de cerrado y bloquea el formulario en vivo. */
+  function aplicarEstadoApertura(abierto) {
+    const aviso  = document.getElementById('avisoCerrado');
+    const texto  = document.getElementById('avisoCerradoTexto');
+    const estado = document.getElementById('estadoApertura');
+    if (aviso) {
+      if (!abierto && aviso.hidden && texto) {
+        texto.textContent = 'Ahora mismo no se admiten pedidos. Vuelve más tarde.';
+      }
+      aviso.hidden = abierto;
+    }
+    if (estado) {
+      estado.textContent = abierto ? 'Abierto' : 'Cerrado';
+      estado.classList.toggle('estado-apertura--abierto', abierto);
+      estado.classList.toggle('estado-apertura--cerrado', !abierto);
+    }
+    formulario.toggleAttribute('inert', !abierto);
+  }
+
   async function refrescarStock() {
     try {
       const respuesta = await fetch('api/stock.php', { headers: { Accept: 'application/json' } });
       const datos = await respuesta.json();
       if (!datos.ok) return;
+
+      aplicarEstadoApertura(datos.abierto);
 
       productosInfo.forEach((info) => {
         if (info.id in datos.stock) info.stockBase = datos.stock[info.id];

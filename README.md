@@ -40,18 +40,10 @@ ni Node, ni ninguna dependencia externa.
 
 ## Aviso por correo
 
-InfinityFree **bloquea la función `mail()` de PHP** y las conexiones SMTP
-salientes, así que el correo se envía llamando por HTTPS a la API de un
-proveedor externo. Hay dos ya implementados, ambos con plan gratuito:
-
-| Proveedor | Gratis        | Dónde se saca la clave |
-|-----------|---------------|------------------------|
-| Brevo     | 300 correos/día | brevo.com → SMTP & API → API Keys |
-| Resend    | 100 correos/día | resend.com → API Keys |
-
-En `config.php`, dentro de `email`, poner `proveedor` a `'brevo'` o `'resend'`
-y pegar la `api_key`. Con `'ninguno'` la aplicación funciona igual, pero no
-manda correos (el panel avisa cuando un envío falla).
+Al completar un pedido, el servidor llama al Google Apps Script configurado
+en `includes/config.php` (`hoja.webhook` y `hoja.password`), que registra el
+pedido en la hoja de cálculo y envía el correo al alumno. El correo del
+alumno es obligatorio al pedir.
 
 ## Estructura
 
@@ -71,7 +63,6 @@ api/
 includes/
   arranque.php         Configuración, conexión a la BD y utilidades
   auth.php             Sesión del administrador
-  email.php            Envío de avisos
   config.php           Contraseñas — NO se sube al repositorio
 assets/css | assets/js Estilos y JavaScript
 sql/esquema.sql        Tablas y catálogo inicial

@@ -284,6 +284,46 @@
     }
   });
 
+  /* ---------- Abrir / cerrar la cafetería ---------- */
+
+  const interruptor = document.getElementById('interruptorCafeteria');
+
+  function pintarInterruptor(abierto) {
+    interruptor.dataset.abierto = abierto ? '1' : '0';
+    interruptor.textContent = abierto ? 'Cafetería abierta · Cerrar' : 'Cafetería CERRADA · Abrir';
+    interruptor.classList.toggle('interruptor-cafeteria--abierta', abierto);
+    interruptor.classList.toggle('interruptor-cafeteria--cerrada', !abierto);
+  }
+
+  async function cargarEstadoCafeteria() {
+    try {
+      const respuesta = await fetch('../api/estado_cafeteria.php', { headers: { Accept: 'application/json' } });
+      const datos = await respuesta.json();
+      if (datos.ok) pintarInterruptor(datos.interruptor);
+    } catch { /* se reintenta al recargar */ }
+  }
+
+  interruptor.addEventListener('click', async () => {
+    const abrir = interruptor.dataset.abierto !== '1';
+    if (!abrir && !confirm('¿Cerrar la cafetería? Los alumnos no podrán hacer pedidos hasta que la abras.')) return;
+    interruptor.disabled = true;
+    try {
+      const respuesta = await fetch('../api/estado_cafeteria.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ abierto: abrir, csrf: CSRF }),
+      });
+      const datos = await respuesta.json();
+      if (datos.ok) pintarInterruptor(datos.abierto);
+      else alert(datos.error || 'No se ha podido cambiar el estado.');
+    } catch {
+      alert('Sin conexión. No se ha cambiado el estado.');
+    } finally {
+      interruptor.disabled = false;
+    }
+  });
+  cargarEstadoCafeteria();
+
   /* ---------- Cambio de día ---------- */
 
   entradaFecha.addEventListener('change', () => {

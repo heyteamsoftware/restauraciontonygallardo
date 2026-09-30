@@ -136,6 +136,11 @@ a { color: var(--verde-medio); }
   font-size: .93rem;
 }
 .aviso--atencion { background: #fdf6e7; border-color: var(--dorado); }
+.aviso--cerrado { background: #fbeaea; border-color: #b3261e; color: #7a1a15; font-size: 1.05rem; text-align: center; }
+.aviso--cerrado[hidden] { display: none; }
+.interruptor-cafeteria { border: 2px solid transparent; font-weight: 700; }
+.interruptor-cafeteria--abierta { background: #e4f3e8; color: #1f5d33; border-color: #1f5d33; }
+.interruptor-cafeteria--cerrada { background: #fbeaea; color: #7a1a15; border-color: #b3261e; }
 .aviso--error { background: #fdf1ef; border-color: var(--rojo); color: #7d271e; }
 .aviso--info { background: #e9f1fb; border-color: var(--verde-oscuro, #1f5d8c); color: #1f3d2b; margin-bottom: 1rem; }
 

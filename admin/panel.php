@@ -67,6 +67,8 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
       <span>Avisar con un sonido</span>
     </label>
 
+    <button type="button" class="boton boton--minusculo interruptor-cafeteria" id="interruptorCafeteria" data-abierto="1">Cafetería abierta</button>
+
     <span class="estado-conexion" id="estadoConexion" aria-live="polite">Conectando…</span>
   </div>
 

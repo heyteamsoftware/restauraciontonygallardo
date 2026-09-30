@@ -21,6 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonError('Método no permitido.', 405);
 }
 
+if (!cafeteriaAbierta()) {
+    jsonError('La cafetería está cerrada ahora mismo y no se admiten pedidos.', 409);
+}
+
 if (!dentroDeHorario()) {
     jsonError('Ahora mismo no se admiten pedidos. Consulta el horario de la cafetería.', 409);
 }
@@ -139,19 +143,7 @@ try {
 
     $pedidoId = (int) $pdo->lastInsertId();
 
-    $insertarLinea = $pdo->prepare(
-        'INSERT INTO pedido_lineas (pedido_id, producto_id, nombre_producto, precio_unitario, cantidad)
-         VALUES (?, ?, ?, ?, ?)'
-    );
-    foreach ($lineas as $linea) {
-        $insertarLinea->execute([
-            $pedidoId,
-            $linea['producto_id'],
-            $linea['nombre_producto'],
-            $linea['precio_unitario'],
-            $linea['cantidad'],
-        ]);
-    }
+    insertarLineasPedido($pdo, $pedidoId, $lineas);
 
     $errorStock = descontarStock($pdo, $lineas);
     if ($errorStock !== null) {

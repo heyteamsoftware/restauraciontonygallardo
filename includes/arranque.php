@@ -46,6 +46,9 @@ function bd(): PDO
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
         ]);
+        // NOW() de MySQL debe coincidir con la hora local de PHP (si no, las
+        // horas guardadas y las comparaciones salen desfasadas).
+        $pdo->exec("SET time_zone = '" . date('P') . "'");
     } catch (PDOException $e) {
         error_log('Error de conexión a la BD: ' . $e->getMessage());
         http_response_code(500);
@@ -156,7 +159,7 @@ function descontarStock(PDO $pdo, array $lineas): ?string
     );
 
     foreach ($lineas as $linea) {
-        $receta = $recetas[$linea['producto_id']] ?? [];
+        $receta = array_key_exists('receta', $linea) ? $linea['receta'] : ($recetas[$linea['producto_id']] ?? []);
 
         if (!$receta) {
             $descontarProducto->execute([$linea['cantidad'], $linea['producto_id'], $linea['cantidad']]);
@@ -164,6 +167,12 @@ function descontarStock(PDO $pdo, array $lineas): ?string
                 $consulta = $pdo->prepare('SELECT stock FROM productos WHERE id = ?');
                 $consulta->execute([$linea['producto_id']]);
                 $stockActual = $consulta->fetchColumn();
+
+                // rowCount() cuenta filas modificadas, no encontradas: con stock
+                // NULL (ilimitado) el UPDATE no cambia nada y devuelve 0.
+                if ($stockActual === null) {
+                    continue;
+                }
 
                 return $stockActual === false
                     ? "El producto \"{$linea['nombre_producto']}\" ya no existe."
@@ -180,6 +189,10 @@ function descontarStock(PDO $pdo, array $lineas): ?string
                 $consulta = $pdo->prepare('SELECT nombre, stock FROM ingredientes WHERE id = ?');
                 $consulta->execute([$ingrediente['ingrediente_id']]);
                 $fila = $consulta->fetch();
+
+                if ($fila !== false && $fila['stock'] === null) {
+                    continue; // ingrediente ilimitado (ver el caso de productos arriba)
+                }
 
                 return $fila === false
                     ? "Un ingrediente de \"{$linea['nombre_producto']}\" ya no existe."
@@ -200,7 +213,7 @@ function reponerStock(PDO $pdo, array $lineas): void
     $reponerProducto    = $pdo->prepare('UPDATE productos SET stock = stock + ? WHERE id = ? AND stock IS NOT NULL');
 
     foreach ($lineas as $linea) {
-        $receta = $recetas[$linea['producto_id']] ?? [];
+        $receta = array_key_exists('receta', $linea) ? $linea['receta'] : ($recetas[$linea['producto_id']] ?? []);
 
         if (!$receta) {
             $reponerProducto->execute([$linea['cantidad'], $linea['producto_id']]);
@@ -281,18 +294,57 @@ function catalogoConStock(bool $soloActivos = true): array
     return $productos;
 }
 
-/** Lee las líneas de un pedido en el formato que usan descontarStock()/reponerStock(). */
+/**
+ * Lee las líneas de un pedido en el formato que usan descontarStock()/reponerStock().
+ * Si la línea guardó la receta que tenía al pedirse (receta_json), se devuelve en
+ * 'receta' para devolver/descontar exactamente lo mismo aunque la receta del
+ * producto haya cambiado después.
+ */
 function lineasDelPedido(PDO $pdo, int $pedidoId): array
 {
     $consulta = $pdo->prepare(
-        'SELECT producto_id, nombre_producto, cantidad FROM pedido_lineas WHERE pedido_id = ?'
+        'SELECT producto_id, nombre_producto, cantidad, receta_json FROM pedido_lineas WHERE pedido_id = ?'
     );
     $consulta->execute([$pedidoId]);
-    return array_map(static fn($f) => [
-        'producto_id'     => (int) $f['producto_id'],
-        'nombre_producto' => $f['nombre_producto'],
-        'cantidad'        => (int) $f['cantidad'],
-    ], $consulta->fetchAll());
+
+    return array_map(static function ($f) {
+        $linea = [
+            'producto_id'     => (int) $f['producto_id'],
+            'nombre_producto' => $f['nombre_producto'],
+            'cantidad'        => (int) $f['cantidad'],
+        ];
+        if ($f['receta_json'] !== null) {
+            $linea['receta'] = json_decode($f['receta_json'], true) ?: [];
+        }
+        return $linea;
+    }, $consulta->fetchAll());
+}
+
+/**
+ * Inserta las líneas de un pedido guardando la receta vigente de cada producto,
+ * y la añade a $lineas para que descontarStock() use esa misma receta.
+ *
+ * @param array<int, array<string,mixed>> $lineas
+ */
+function insertarLineasPedido(PDO $pdo, int $pedidoId, array &$lineas): void
+{
+    $recetas = recetasDeProductos($pdo, array_column($lineas, 'producto_id'));
+    $insertar = $pdo->prepare(
+        'INSERT INTO pedido_lineas (pedido_id, producto_id, nombre_producto, precio_unitario, cantidad, receta_json)
+         VALUES (?, ?, ?, ?, ?, ?)'
+    );
+    foreach ($lineas as &$linea) {
+        $linea['receta'] = $recetas[$linea['producto_id']] ?? [];
+        $insertar->execute([
+            $pedidoId,
+            $linea['producto_id'],
+            $linea['nombre_producto'],
+            $linea['precio_unitario'],
+            $linea['cantidad'],
+            json_encode($linea['receta']),
+        ]);
+    }
+    unset($linea);
 }
 
 /**
@@ -341,6 +393,24 @@ function llamarAppsScript(string $accion, array $datosExtra): array
     }
 
     return $json;
+}
+
+/** ¿Está la cafetería abierta según el interruptor del panel (tabla ajustes)? */
+function cafeteriaAbierta(): bool
+{
+    try {
+        $valor = bd()->query("SELECT valor FROM ajustes WHERE clave = 'cafeteria_abierta'")->fetchColumn();
+        return $valor === false || $valor === '1';
+    } catch (PDOException $e) {
+        error_log('No se pudo leer el estado de la cafetería: ' . $e->getMessage());
+        return true;
+    }
+}
+
+/** ¿Se aceptan pedidos ahora? Interruptor del panel Y horario configurado. */
+function pedidosAbiertos(): bool
+{
+    return cafeteriaAbierta() && dentroDeHorario();
 }
 
 /** ¿Estamos dentro del horario en el que se aceptan pedidos? */

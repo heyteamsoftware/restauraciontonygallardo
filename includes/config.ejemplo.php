@@ -26,25 +26,10 @@ return [
         'pin_hash' => '$2y$10$SUSTITUIR_POR_EL_HASH_GENERADO',
     ],
 
-    // --- Aviso por email al alumno ----------------------------------
-    // InfinityFree bloquea la función mail() de PHP, así que se envía
-    // a través de la API HTTPS de un proveedor externo (plan gratuito).
-    //
-    //   proveedor: 'ninguno' | 'brevo' | 'resend'
-    //   'ninguno' = la app funciona igual, pero no envía correos.
-    'email' => [
-        'proveedor'    => 'ninguno',
-        'api_key'      => '',
-        'remitente'    => 'cafeteria@tudominio.com',
-        'nombre_envio' => 'Cafetería del instituto',
-    ],
-
     // --- Registro en Google Sheets -----------------------------------
-    // IMPORTANTE: este webhook NO se llama desde el servidor PHP —
-    // InfinityFree bloquea las conexiones salientes a script.google.com.
-    // Lo llama directamente el navegador del panel (assets/js/panel.js),
-    // que sí puede alcanzarlo sin problema. Estos valores solo se pasan
-    // a esa página para que el JavaScript los use.
+    // El servidor PHP llama a este Apps Script (includes/arranque.php >
+    // llamarAppsScript()) para registrar el pedido en la hoja y avisar por
+    // correo al alumno. Nunca se envía al navegador.
     //
     // webhook: URL de la implementación del Apps Script (termina en /exec).
     // password: debe coincidir exactamente con la constante PASS del script.

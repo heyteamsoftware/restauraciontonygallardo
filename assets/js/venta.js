@@ -345,7 +345,8 @@
       const resultado = await respuesta.json();
 
       if (!respuesta.ok || !resultado.ok) {
-        alert(resultado.error || 'No se ha podido crear el pedido.');
+        const detalle = resultado.error || Object.values(resultado.errores || {}).join('\n');
+        alert(detalle || 'No se ha podido crear el pedido.');
         return;
       }
 

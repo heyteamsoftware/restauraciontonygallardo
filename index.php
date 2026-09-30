@@ -17,7 +17,8 @@ foreach ($productos as $producto) {
     $porCategoria[$producto['categoria']][] = $producto;
 }
 
-$abierto = dentroDeHorario();
+$abierto = pedidosAbiertos();
+$cerradoPorPanel = !cafeteriaAbierta();
 [$horaDesde, $horaHasta] = $CONFIG['app']['horario_pedidos'];
 ?>
 <!DOCTYPE html>
@@ -41,7 +42,7 @@ $abierto = dentroDeHorario();
     <span class="marca"><?= e($CONFIG['app']['nombre']) ?></span>
     <div class="cabecera__indicadores">
       <span class="indicador-conexion" id="indicadorConexion" aria-live="polite"></span>
-      <span class="estado-apertura <?= $abierto ? 'estado-apertura--abierto' : 'estado-apertura--cerrado' ?>">
+      <span id="estadoApertura" class="estado-apertura <?= $abierto ? 'estado-apertura--abierto' : 'estado-apertura--cerrado' ?>">
         <?= $abierto ? 'Abierto' : 'Cerrado' ?>
       </span>
     </div>
@@ -64,11 +65,14 @@ $abierto = dentroDeHorario();
   <!-- ============ Formulario de pedido (2 pantallas) ============ -->
   <div id="bloquePedido">
 
-    <?php if (!$abierto): ?>
-      <p class="aviso aviso--atencion">
-        Ahora mismo no se admiten pedidos. Horario: <?= (int) $horaDesde ?>:00–<?= (int) $horaHasta ?>:00.
-      </p>
-    <?php endif; ?>
+    <p class="aviso aviso--atencion aviso--cerrado" id="avisoCerrado" <?= $abierto ? 'hidden' : '' ?>>
+      <strong>Cafetería cerrada.</strong>
+      <span id="avisoCerradoTexto">
+        <?= $cerradoPorPanel
+            ? 'Ahora mismo no se admiten pedidos. Vuelve más tarde.'
+            : 'Ahora mismo no se admiten pedidos. Horario: ' . (int) $horaDesde . ':00–' . (int) $horaHasta . ':00.' ?>
+      </span>
+    </p>
 
     <?php if (!$productos): ?>
       <p class="aviso aviso--atencion">No hay productos disponibles en este momento.</p>

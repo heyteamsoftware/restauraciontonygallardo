@@ -47,6 +47,24 @@ if ($pedido['estado'] === $estado) {
 }
 
 $pdo = bd();
+$pdo->beginTransaction();
+
+// El cambio de estado se hace primero y solo si el pedido sigue en el estado
+// que se leyó: si dos pulsaciones (o dos personas) llegan a la vez, solo una
+// gana y la otra no repite el stock ni el aviso por correo.
+if ($estado === 'completado') {
+    // Marca permanente: una vez completado, ya no se puede borrar el
+    // pedido nunca, ni aunque se reabra después (ver api/eliminar_pedido.php).
+    $cambio = $pdo->prepare('UPDATE pedidos SET estado = ?, fue_completado = 1, actualizado_en = NOW() WHERE id = ? AND estado = ?');
+} else {
+    $cambio = $pdo->prepare('UPDATE pedidos SET estado = ?, actualizado_en = NOW() WHERE id = ? AND estado = ?');
+}
+$cambio->execute([$estado, $id, $pedido['estado']]);
+
+if ($cambio->rowCount() === 0) {
+    $pdo->rollBack();
+    json(['ok' => true, 'estado' => $estado, 'aviso' => 'sin_cambios']);
+}
 
 // ---------------------------------------------------------------------
 //  Stock: al cancelar un pedido se devuelven sus unidades; si se reabre
@@ -59,20 +77,13 @@ if ($estado === 'cancelado' && !$pedido['stock_repuesto']) {
 } elseif ($pedido['estado'] === 'cancelado' && $pedido['stock_repuesto']) {
     $errorStock = descontarStock($pdo, lineasDelPedido($pdo, $id));
     if ($errorStock !== null) {
+        $pdo->rollBack();
         jsonError($errorStock, 409);
     }
     $pdo->prepare('UPDATE pedidos SET stock_repuesto = 0 WHERE id = ?')->execute([$id]);
 }
 
-if ($estado === 'completado') {
-    // Marca permanente: una vez completado, ya no se puede borrar el
-    // pedido nunca, ni aunque se reabra después (ver api/eliminar_pedido.php).
-    $pdo->prepare('UPDATE pedidos SET estado = ?, fue_completado = 1, actualizado_en = NOW() WHERE id = ?')
-        ->execute([$estado, $id]);
-} else {
-    $pdo->prepare('UPDATE pedidos SET estado = ?, actualizado_en = NOW() WHERE id = ?')
-        ->execute([$estado, $id]);
-}
+$pdo->commit();
 
 // -----------------------------------------------------------------
 //  Al completar el pedido: se avisa por correo y se registra en el

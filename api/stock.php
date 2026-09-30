@@ -29,4 +29,4 @@ foreach (catalogoConStock() as $producto) {
     $ingredientes[$producto['id']] = $producto['ingredientes'];
 }
 
-json(['ok' => true, 'stock' => $stock, 'ingredientes' => $ingredientes]);
+json(['ok' => true, 'abierto' => pedidosAbiertos(), 'stock' => $stock, 'ingredientes' => $ingredientes]);

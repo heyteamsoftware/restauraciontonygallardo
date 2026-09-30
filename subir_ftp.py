@@ -43,7 +43,6 @@ CARPETA_REMOTA = "/var/www/html/Tony_Restauracion"
 # servidor o herramientas que no forman parte del despliegue.
 RUTAS_PROTEGIDAS = {
     "includes/config.php",
-    "includes/personas_autorizadas.php",
     "admin/generar_hash.php",
     "herramientas",
 }
